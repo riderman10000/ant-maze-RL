@@ -53,6 +53,7 @@ def visualize(
     config: dict,
     model_path: str | None = None,
     num_episodes: int = 1,
+    start_episode: int = 1,
     random_policy: bool = False,
     render_mode: str | None = None,
     video_path: str | None = None,
@@ -61,6 +62,8 @@ def visualize(
     """Run rollouts with either a trained model or random actions."""
     if num_episodes <= 0:
         raise ValueError("--episodes must be greater than zero")
+    if start_episode <= 0:
+        raise ValueError("--start-episode must be greater than zero")
 
     if model_path is None:
         random_policy = True
@@ -88,6 +91,7 @@ def visualize(
     if not random_policy:
         print(f"Model: {model_path}")
     print(f"Episodes: {num_episodes}")
+    print(f"Starting evaluation episode: {start_episode}")
     print(f"Render mode: {env_render_mode}")
     if output_video is not None:
         print(f"Video output: {output_video}")
@@ -106,8 +110,9 @@ def visualize(
     fps = int(getattr(env, "metadata", {}).get("render_fps", 30))
 
     try:
-        for episode in range(num_episodes):
-            episode_seed = None if seed is None else seed + episode
+        for episode_offset in range(num_episodes):
+            eval_episode = start_episode + episode_offset
+            episode_seed = None if seed is None else seed + eval_episode - 1
             obs, _ = env.reset(seed=episode_seed)
             done = False
             episode_reward = 0.0
@@ -156,7 +161,7 @@ def visualize(
 
             final_distance = goal_distance(obs)
             print(
-                f"Episode {episode + 1:3d} | "
+                f"Episode {eval_episode:3d} | "
                 f"Reward: {episode_reward:10.2f} | "
                 f"Length: {episode_length:5d} | "
                 f"Status: {status} | "
@@ -196,6 +201,12 @@ def main() -> None:
         help="Number of episodes to visualize",
     )
     parser.add_argument(
+        "--start-episode",
+        type=int,
+        default=1,
+        help="Evaluation episode number to start replaying from",
+    )
+    parser.add_argument(
         "--random",
         action="store_true",
         help="Use random actions as a pre-training sanity check",
@@ -224,6 +235,7 @@ def main() -> None:
         config=config,
         model_path=args.model,
         num_episodes=args.episodes,
+        start_episode=args.start_episode,
         random_policy=args.random,
         render_mode=args.render_mode,
         video_path=args.video,

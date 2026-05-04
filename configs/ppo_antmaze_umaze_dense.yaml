@@ -7,14 +7,14 @@ env_id: AntMaze_UMazeDense-v5
 algorithm: PPO
 
 # Training parameters
-total_timesteps: 1000000
+total_timesteps: 3000000
 learning_rate: 0.0003
 n_steps: 2048
 batch_size: 64
-gamma: 0.99
+gamma: 0.995
 gae_lambda: 0.95
 n_epochs: 10
-ent_coef: 0.0
+ent_coef: 0.001
 device: auto
 verbose: 1
 progress_bar: true
@@ -29,6 +29,6 @@ render_mode: rgb_array
 tensorboard_log: logs/tensorboard
 monitor_dir: logs/monitor
 checkpoint_dir: checkpoints
-checkpoint_freq: 25000
+checkpoint_freq: 100000 # 25000
 result_dir: results
 final_model_name: ppo_antmaze_umaze_dense_final

@@ -70,6 +70,18 @@ Training uses:
 - periodic checkpoints in `checkpoints`
 - final model at `checkpoints/ppo_antmaze_umaze_dense_final.zip`
 
+Continue training from an existing `.zip` checkpoint:
+
+```bash
+python -m src.train \
+  --config configs/ppo_antmaze_umaze_dense.yaml \
+  --resume checkpoints/ppo_antmaze_umaze_dense_final_step_750000_steps.zip
+```
+
+When resuming, `total_timesteps` in the config means additional timesteps to train. For example, if the checkpoint already has 750k steps and the config says `total_timesteps: 3000000`, the resumed run trains 3M more steps.
+
+The checkpoint keeps the PPO network, optimizer state, and PPO hyperparameters from the saved model. Use this for continuing a run. To test new PPO hyperparameters cleanly, start a fresh run.
+
 ## Evaluate
 
 ```bash

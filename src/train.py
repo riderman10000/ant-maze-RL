@@ -11,7 +11,11 @@ from src.make_env import make_env
 from src.utils import create_dirs, ensure_zip_path, load_config, set_seed
 
 
-def train(config: dict) -> None:
+def train(
+    config: dict,
+    resume_path: str | None = None,
+    reset_num_timesteps: bool = False,
+) -> None:
     """Train a PPO agent from a YAML config."""
     algorithm = str(config.get("algorithm", "PPO")).upper()
     if algorithm != "PPO":
@@ -47,11 +51,16 @@ def train(config: dict) -> None:
     print(f"Training PPO on {env_id}")
     print("=" * 60)
     print(f"Total timesteps: {total_timesteps}")
-    print(f"Learning rate: {learning_rate}")
-    print(f"N steps: {n_steps}")
-    print(f"Batch size: {batch_size}")
-    print(f"Gamma: {gamma}")
     print(f"Device: {device}")
+    if resume_path is not None:
+        print(f"Resume checkpoint: {resume_path}")
+        print(f"Reset timestep counter: {reset_num_timesteps}")
+        print("PPO hyperparameters will be loaded from the checkpoint.")
+    else:
+        print(f"Learning rate: {learning_rate}")
+        print(f"N steps: {n_steps}")
+        print(f"Batch size: {batch_size}")
+        print(f"Gamma: {gamma}")
     if seed is not None:
         print(f"Seed: {seed}")
     print("=" * 60)
@@ -64,22 +73,36 @@ def train(config: dict) -> None:
                 f"Got observation space: {env.observation_space}"
             )
 
-        # AntMaze uses dictionary observations, so SB3 needs MultiInputPolicy.
-        model = PPO(
-            policy="MultiInputPolicy",
-            env=env,
-            learning_rate=learning_rate,
-            n_steps=n_steps,
-            batch_size=batch_size,
-            n_epochs=n_epochs,
-            gamma=gamma,
-            gae_lambda=gae_lambda,
-            ent_coef=ent_coef,
-            tensorboard_log=str(tensorboard_log),
-            verbose=verbose,
-            seed=seed,
-            device=device,
-        )
+        if resume_path is not None:
+            resume_model_path = ensure_zip_path(resume_path)
+            if not resume_model_path.exists():
+                raise FileNotFoundError(f"Resume checkpoint not found: {resume_model_path}")
+
+            model = PPO.load(
+                resume_model_path,
+                env=env,
+                tensorboard_log=str(tensorboard_log),
+                verbose=verbose,
+                device=device,
+            )
+            print(f"Loaded checkpoint with {model.num_timesteps} previous timesteps.")
+        else:
+            # AntMaze uses dictionary observations, so SB3 needs MultiInputPolicy.
+            model = PPO(
+                policy="MultiInputPolicy",
+                env=env,
+                learning_rate=learning_rate,
+                n_steps=n_steps,
+                batch_size=batch_size,
+                n_epochs=n_epochs,
+                gamma=gamma,
+                gae_lambda=gae_lambda,
+                ent_coef=ent_coef,
+                tensorboard_log=str(tensorboard_log),
+                verbose=verbose,
+                seed=seed,
+                device=device,
+            )
 
         callback = None
         if checkpoint_freq > 0:
@@ -92,10 +115,12 @@ def train(config: dict) -> None:
             )
 
         print("\nStarting training...")
+        learn_reset_num_timesteps = reset_num_timesteps if resume_path is not None else True
         model.learn(
             total_timesteps=total_timesteps,
             callback=callback,
             tb_log_name=final_model_name,
+            reset_num_timesteps=learn_reset_num_timesteps,
             progress_bar=progress_bar,
         )
 
@@ -124,13 +149,24 @@ def main():
         default='configs/ppo_antmaze_umaze_dense.yaml',
         help='Path to config file',
     )
+    parser.add_argument(
+        '--resume',
+        type=str,
+        default=None,
+        help='Path to an existing Stable-Baselines3 .zip checkpoint to continue training',
+    )
+    parser.add_argument(
+        '--reset-timesteps',
+        action='store_true',
+        help='Restart TensorBoard/checkpoint timestep count when resuming',
+    )
     args = parser.parse_args()
     
     # Load config
     config = load_config(args.config)
     
     # Train
-    train(config)
+    train(config, resume_path=args.resume, reset_num_timesteps=args.reset_timesteps)
 
 
 if __name__ == '__main__':
