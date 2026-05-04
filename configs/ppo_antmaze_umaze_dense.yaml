@@ -1,14 +1,16 @@
 # PPO Configuration for AntMaze UMaze Dense Reward
 
 # Environment
-env_id: AntMaze_UMazeDense-v5
+env_id: AntMaze_Medium-v5 # AntMaze_UMazeDense-v5
+n_envs: 4
+vec_env_type: subproc  # use dummy if subprocesses cause issues on your machine
 
 # Algorithm
 algorithm: PPO
 
 # Training parameters
-total_timesteps: 3000000
-learning_rate: 0.0003
+total_timesteps: 10000
+learning_rate: 0.00003
 n_steps: 2048
 batch_size: 64
 gamma: 0.995

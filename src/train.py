@@ -7,7 +7,7 @@ from gymnasium.spaces import Dict as DictSpace
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback
 
-from src.make_env import make_env
+from src.make_env import make_vec_env
 from src.utils import create_dirs, ensure_zip_path, load_config, set_seed
 
 
@@ -40,6 +40,8 @@ def train(
     progress_bar = bool(config.get("progress_bar", True))
     device = config.get("device", "auto")
     verbose = int(config.get("verbose", 1))
+    n_envs = int(config.get("n_envs", 1))
+    vec_env_type = str(config.get("vec_env_type", "subproc")).lower()
 
     create_dirs(config)
 
@@ -51,6 +53,8 @@ def train(
     print(f"Training PPO on {env_id}")
     print("=" * 60)
     print(f"Total timesteps: {total_timesteps}")
+    print(f"Environment copies: {n_envs}")
+    print(f"Vector env type: {vec_env_type if n_envs > 1 else 'dummy'}")
     print(f"Device: {device}")
     if resume_path is not None:
         print(f"Resume checkpoint: {resume_path}")
@@ -65,7 +69,14 @@ def train(
         print(f"Seed: {seed}")
     print("=" * 60)
 
-    env = make_env(env_id=env_id, render_mode=None, seed=seed, monitor_dir=monitor_dir)
+    env = make_vec_env(
+        env_id=env_id,
+        n_envs=n_envs,
+        render_mode=None,
+        seed=seed,
+        monitor_dir=monitor_dir,
+        vec_env_type=vec_env_type,
+    )
     try:
         if not isinstance(env.observation_space, DictSpace):
             raise TypeError(

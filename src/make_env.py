@@ -1,9 +1,11 @@
 """Environment creation for Gymnasium Robotics AntMaze."""
 
 from pathlib import Path
+from typing import Callable
 
 import gymnasium as gym
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 
 _ROBOTICS_REGISTERED = False
 
@@ -66,3 +68,59 @@ def make_env(
         monitor_file = str(monitor_path / "monitor.csv")
 
     return Monitor(env, filename=monitor_file)
+
+
+def _make_env_fn(
+    env_id: str,
+    rank: int,
+    render_mode: str | None = None,
+    seed: int | None = None,
+    monitor_dir: str | Path | None = None,
+) -> Callable[[], gym.Env]:
+    """Create a thunk used by Stable-Baselines3 vectorized environments."""
+
+    def _init() -> gym.Env:
+        env_seed = None if seed is None else seed + rank
+        env_monitor_dir = None
+        if monitor_dir is not None:
+            env_monitor_dir = Path(monitor_dir) / f"env_{rank}"
+
+        return make_env(
+            env_id=env_id,
+            render_mode=render_mode,
+            seed=env_seed,
+            monitor_dir=env_monitor_dir,
+        )
+
+    return _init
+
+
+def make_vec_env(
+    env_id: str,
+    n_envs: int = 1,
+    render_mode: str | None = None,
+    seed: int | None = None,
+    monitor_dir: str | Path | None = None,
+    vec_env_type: str = "subproc",
+) -> VecEnv:
+    """Create multiple monitored AntMaze environment copies for one PPO policy."""
+    if n_envs < 1:
+        raise ValueError("n_envs must be at least 1")
+
+    env_fns = [
+        _make_env_fn(
+            env_id=env_id,
+            rank=rank,
+            render_mode=render_mode,
+            seed=seed,
+            monitor_dir=monitor_dir,
+        )
+        for rank in range(n_envs)
+    ]
+
+    if n_envs == 1 or vec_env_type == "dummy":
+        return DummyVecEnv(env_fns)
+    if vec_env_type == "subproc":
+        return SubprocVecEnv(env_fns)
+
+    raise ValueError("vec_env_type must be either 'dummy' or 'subproc'")

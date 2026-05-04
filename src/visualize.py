@@ -7,7 +7,18 @@ import imageio.v2 as imageio
 from stable_baselines3 import PPO
 
 from src.make_env import make_env
-from src.utils import create_dirs, ensure_zip_path, extract_success, goal_distance, load_config
+from src.utils import (
+    achieved_xy,
+    create_dirs,
+    ensure_zip_path,
+    extract_success,
+    goal_xy,
+    goal_distance,
+    load_config,
+    save_rollout_distance_plot,
+    save_rollout_trace,
+    save_xy_trajectory_plot,
+)
 
 
 def _default_video_name(random_policy: bool) -> str:
@@ -58,6 +69,7 @@ def visualize(
     render_mode: str | None = None,
     video_path: str | None = None,
     save_video: bool = True,
+    save_plots: bool = True,
 ) -> None:
     """Run rollouts with either a trained model or random actions."""
     if num_episodes <= 0:
@@ -95,6 +107,8 @@ def visualize(
     print(f"Render mode: {env_render_mode}")
     if output_video is not None:
         print(f"Video output: {output_video}")
+    if save_plots:
+        print(f"Rollout plots: {Path(config['result_dir']) / 'rollouts'}")
     print("=" * 60)
 
     env = make_env(env_id=env_id, render_mode=env_render_mode, seed=seed)
@@ -119,6 +133,17 @@ def visualize(
             episode_length = 0
             episode_success = None
             min_distance = goal_distance(obs)
+            distance_history = []
+            step_history = []
+            xy_history = []
+            rollout_goal = goal_xy(obs)
+
+            initial_xy = achieved_xy(obs)
+            if min_distance is not None:
+                distance_history.append(min_distance)
+                step_history.append(0)
+            if initial_xy is not None:
+                xy_history.append(initial_xy)
 
             if env_render_mode == "rgb_array":
                 frame = env.render()
@@ -138,10 +163,16 @@ def visualize(
 
                 distance = goal_distance(obs)
                 if distance is not None:
+                    distance_history.append(distance)
+                    step_history.append(episode_length)
                     if min_distance is None:
                         min_distance = distance
                     else:
                         min_distance = min(min_distance, distance)
+
+                xy = achieved_xy(obs)
+                if xy is not None:
+                    xy_history.append(xy)
 
                 success = extract_success(info)
                 if success is not None:
@@ -168,6 +199,31 @@ def visualize(
                 f"Min dist: {min_distance if min_distance is not None else float('nan'):.2f} | "
                 f"Final dist: {final_distance if final_distance is not None else float('nan'):.2f}"
             )
+
+            if save_plots and distance_history and xy_history:
+                rollout_dir = Path(config["result_dir"]) / "rollouts"
+                policy_name = "random" if random_policy else "model"
+                name_prefix = f"{policy_name}_episode_{eval_episode:03d}"
+
+                save_rollout_trace(
+                    step_history,
+                    distance_history,
+                    xy_history,
+                    rollout_goal,
+                    rollout_dir / f"{name_prefix}_trace.csv",
+                )
+                save_rollout_distance_plot(
+                    step_history,
+                    distance_history,
+                    rollout_dir / f"{name_prefix}_distance_over_time.png",
+                    title=f"Distance to Goal Over Time (Episode {eval_episode})",
+                )
+                save_xy_trajectory_plot(
+                    xy_history,
+                    rollout_goal,
+                    rollout_dir / f"{name_prefix}_xy_trajectory.png",
+                    title=f"XY Trajectory (Episode {eval_episode})",
+                )
     finally:
         env.close()
 
@@ -228,6 +284,11 @@ def main() -> None:
         action="store_true",
         help="Run the rollout without saving an rgb_array video",
     )
+    parser.add_argument(
+        "--no-plots",
+        action="store_true",
+        help="Run the rollout without saving distance and xy diagnostic plots",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -240,6 +301,7 @@ def main() -> None:
         render_mode=args.render_mode,
         video_path=args.video,
         save_video=not args.no_video,
+        save_plots=not args.no_plots,
     )
 
 

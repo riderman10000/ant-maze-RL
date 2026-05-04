@@ -7,13 +7,19 @@ from stable_baselines3 import PPO
 
 from src.make_env import make_env
 from src.utils import (
+    achieved_xy,
     create_dirs,
     ensure_zip_path,
     extract_success,
+    goal_xy,
     goal_distance,
     load_config,
+    save_distance_plot,
     save_evaluation_plot,
     save_evaluation_results,
+    save_rollout_distance_plot,
+    save_rollout_trace,
+    save_xy_trajectory_plot,
 )
 
 
@@ -50,6 +56,12 @@ def evaluate(
     rewards = []
     lengths = []
     successes = []
+    initial_distances = []
+    min_distances = []
+    final_distances = []
+    success_steps = []
+    best_rollout = None
+    best_min_distance = None
 
     try:
         for episode in range(num_episodes):
@@ -60,6 +72,20 @@ def evaluate(
             episode_length = 0
             episode_success = None
             min_distance = goal_distance(obs)
+            initial_distance = min_distance
+            final_distance = min_distance
+            first_success_step = None
+            distance_history = []
+            xy_history = []
+            step_history = []
+            rollout_goal = goal_xy(obs)
+
+            initial_xy = achieved_xy(obs)
+            if initial_distance is not None:
+                distance_history.append(initial_distance)
+                step_history.append(0)
+            if initial_xy is not None:
+                xy_history.append(initial_xy)
 
             while not done:
                 action, _ = model.predict(obs, deterministic=True)
@@ -70,21 +96,48 @@ def evaluate(
 
                 distance = goal_distance(obs)
                 if distance is not None:
+                    final_distance = distance
+                    distance_history.append(distance)
+                    step_history.append(episode_length)
                     if min_distance is None:
                         min_distance = distance
                     else:
                         min_distance = min(min_distance, distance)
 
+                xy = achieved_xy(obs)
+                if xy is not None:
+                    xy_history.append(xy)
+
                 success = extract_success(info)
                 if success is not None:
+                    if success and first_success_step is None:
+                        first_success_step = episode_length
                     episode_success = success if episode_success is None else episode_success or success
 
             final_distance = goal_distance(obs)
+            if final_distance is not None and not distance_history:
+                distance_history.append(final_distance)
+                step_history.append(episode_length)
 
             episodes.append(episode + 1)
             rewards.append(episode_reward)
             lengths.append(episode_length)
             successes.append(episode_success)
+            initial_distances.append(initial_distance)
+            min_distances.append(min_distance)
+            final_distances.append(final_distance)
+            success_steps.append(first_success_step)
+
+            if min_distance is not None:
+                if best_min_distance is None or min_distance < best_min_distance:
+                    best_min_distance = min_distance
+                    best_rollout = {
+                        "episode": episode + 1,
+                        "steps": step_history,
+                        "distances": distance_history,
+                        "xy_positions": xy_history,
+                        "goal": rollout_goal,
+                    }
 
             if episode_success is None:
                 status = "UNKNOWN"
@@ -107,6 +160,12 @@ def evaluate(
     print("Evaluation Summary:")
     print(f"  Average reward: {sum(rewards) / len(rewards):.2f}")
     print(f"  Average length: {sum(lengths) / len(lengths):.2f}")
+    valid_min_distances = [distance for distance in min_distances if distance is not None]
+    valid_final_distances = [distance for distance in final_distances if distance is not None]
+    if valid_min_distances:
+        print(f"  Average minimum distance: {sum(valid_min_distances) / len(valid_min_distances):.2f}")
+    if valid_final_distances:
+        print(f"  Average final distance: {sum(valid_final_distances) / len(valid_final_distances):.2f}")
     if len(success_values) > 0:
         success_rate = sum(success_values) / len(success_values) * 100
         print(
@@ -118,10 +177,56 @@ def evaluate(
     print("=" * 60)
 
     csv_path = result_dir / "evaluation_results.csv"
-    save_evaluation_results(episodes, rewards, lengths, successes, csv_path)
+    save_evaluation_results(
+        episodes,
+        rewards,
+        lengths,
+        successes,
+        initial_distances,
+        min_distances,
+        final_distances,
+        success_steps,
+        csv_path,
+    )
 
     plot_path = result_dir / "evaluation_rewards.png"
     save_evaluation_plot(episodes, rewards, successes, plot_path)
+
+    distance_plot_path = result_dir / "evaluation_distances.png"
+    save_distance_plot(
+        episodes,
+        min_distances,
+        final_distances,
+        successes,
+        distance_plot_path,
+    )
+
+    if best_rollout is not None:
+        best_episode = best_rollout["episode"]
+        rollout_trace_path = result_dir / "best_rollout_trace.csv"
+        save_rollout_trace(
+            best_rollout["steps"],
+            best_rollout["distances"],
+            best_rollout["xy_positions"],
+            best_rollout["goal"],
+            rollout_trace_path,
+        )
+
+        rollout_distance_path = result_dir / "best_rollout_distance_over_time.png"
+        save_rollout_distance_plot(
+            best_rollout["steps"],
+            best_rollout["distances"],
+            rollout_distance_path,
+            title=f"Best Rollout Distance Over Time (Episode {best_episode})",
+        )
+
+        rollout_xy_path = result_dir / "best_rollout_xy_trajectory.png"
+        save_xy_trajectory_plot(
+            best_rollout["xy_positions"],
+            best_rollout["goal"],
+            rollout_xy_path,
+            title=f"Best Rollout XY Trajectory (Episode {best_episode})",
+        )
 
 
 def main():

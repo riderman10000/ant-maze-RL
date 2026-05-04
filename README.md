@@ -65,10 +65,20 @@ Training uses:
 - `AntMaze_UMazeDense-v5`
 - Stable-Baselines3 `PPO`
 - `MultiInputPolicy` for dictionary observations
+- vectorized AntMaze copies from `n_envs`
 - TensorBoard logs in `logs/tensorboard`
 - Monitor logs in `logs/monitor`
 - periodic checkpoints in `checkpoints`
 - final model at `checkpoints/ppo_antmaze_umaze_dense_final.zip`
+
+Parallel environment training is controlled in the config:
+
+```yaml
+n_envs: 4
+vec_env_type: subproc
+```
+
+This is still one PPO agent. The same policy collects experience from multiple independent AntMaze environments. With PPO, each update collects roughly `n_envs * n_steps` transitions, so `n_envs: 4` and `n_steps: 2048` gives about 8192 transitions per update.
 
 Continue training from an existing `.zip` checkpoint:
 
@@ -96,7 +106,19 @@ This prints reward, episode length, and success status when the environment repo
 ```text
 results/evaluation_results.csv
 results/evaluation_rewards.png
+results/evaluation_distances.png
+results/best_rollout_trace.csv
+results/best_rollout_distance_over_time.png
+results/best_rollout_xy_trajectory.png
 ```
+
+Useful comparison metrics:
+
+- success rate: main benchmark-style metric
+- average final distance: how close the ant ends to the goal
+- average minimum distance: whether the ant ever gets close, even if it drifts away
+- distance over time: whether a rollout steadily approaches the goal
+- xy trajectory: whether the ant follows a plausible route through the maze
 
 ## Visualize
 
@@ -137,6 +159,14 @@ python -m src.visualize \
   --config configs/ppo_antmaze_umaze_dense.yaml \
   --model checkpoints/ppo_antmaze_umaze_dense_final.zip \
   --video results/my_rollout.mp4
+```
+
+Visualization also saves per-rollout diagnostic plots by default:
+
+```text
+results/rollouts/model_episode_001_trace.csv
+results/rollouts/model_episode_001_distance_over_time.png
+results/rollouts/model_episode_001_xy_trajectory.png
 ```
 
 ## TensorBoard
