@@ -1,0 +1,34 @@
+# PPO Configuration for AntMaze UMaze Dense Reward
+
+# Environment
+env_id: AntMaze_UMazeDense-v5
+
+# Algorithm
+algorithm: PPO
+
+# Training parameters
+total_timesteps: 1000000
+learning_rate: 0.0003
+n_steps: 2048
+batch_size: 64
+gamma: 0.99
+gae_lambda: 0.95
+n_epochs: 10
+ent_coef: 0.0
+device: auto
+verbose: 1
+progress_bar: true
+
+# Reproducibility
+seed: 42
+
+# Environment rendering
+render_mode: rgb_array
+
+# Logging and checkpointing
+tensorboard_log: logs/tensorboard
+monitor_dir: logs/monitor
+checkpoint_dir: checkpoints
+checkpoint_freq: 25000
+result_dir: results
+final_model_name: ppo_antmaze_umaze_dense_final

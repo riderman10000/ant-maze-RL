@@ -1,0 +1,13 @@
+gymnasium
+gymnasium-robotics
+stable-baselines3
+mujoco
+pyyaml
+numpy
+pandas
+matplotlib
+imageio
+imageio-ffmpeg
+tensorboard
+tqdm
+rich
