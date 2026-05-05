@@ -1,14 +1,14 @@
-# Phase 1: PPO baseline on AntMaze UMaze dense reward
+# Phase 2: SAC on AntMaze UMaze dense reward
 
-phase: 1
+phase: 2
 version: v1
-algorithm: PPO
+algorithm: SAC
 policy: MultiInputPolicy
 
 # Environment
 env_id: AntMaze_UMazeDense-v5
-n_envs: 4
-vec_env_type: subproc  # use dummy if subprocesses cause issues on your machine
+n_envs: 1
+vec_env_type: dummy
 penalize_unhealthy: true
 unhealthy_penalty: -1.0
 terminate_on_unhealthy: false
@@ -16,16 +16,19 @@ healthy_z_range: [0.2, 1.0]
 
 # Training parameters
 total_timesteps: 1000000
-learning_rate: 0.00003
-n_steps: 2048
-batch_size: 64
+learning_rate: 0.0003
+buffer_size: 1000000
+learning_starts: 10000
+batch_size: 256
+tau: 0.005
 gamma: 0.995
-gae_lambda: 0.95
-n_epochs: 10
-ent_coef: 0.001
+train_freq: 1
+gradient_steps: 1
+ent_coef: auto
 device: auto
 verbose: 1
 progress_bar: true
+use_her: false
 
 # Reproducibility
 seed: 42

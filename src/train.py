@@ -4,9 +4,9 @@ import argparse
 from pathlib import Path
 
 from gymnasium.spaces import Dict as DictSpace
-from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback
 
+from src.algorithms import build_model, get_algorithm_name, get_model_class
 from src.make_env import make_vec_env
 from src.utils import create_dirs, ensure_zip_path, load_config, set_seed
 
@@ -16,20 +16,14 @@ def train(
     resume_path: str | None = None,
     reset_num_timesteps: bool = False,
 ) -> None:
-    """Train a PPO agent from a YAML config."""
-    algorithm = str(config.get("algorithm", "PPO")).upper()
-    if algorithm != "PPO":
-        raise ValueError("This starter code currently supports only algorithm: PPO")
+    """Train an SB3 agent from a YAML config."""
+    algorithm = get_algorithm_name(config)
 
     env_id = config["env_id"]
     total_timesteps = int(config["total_timesteps"])
     learning_rate = float(config["learning_rate"])
-    n_steps = int(config["n_steps"])
     batch_size = int(config["batch_size"])
     gamma = float(config["gamma"])
-    gae_lambda = float(config.get("gae_lambda", 0.95))
-    n_epochs = int(config.get("n_epochs", 10))
-    ent_coef = float(config.get("ent_coef", 0.0))
     seed = config.get("seed")
 
     tensorboard_log = Path(config["tensorboard_log"])
@@ -42,6 +36,10 @@ def train(
     verbose = int(config.get("verbose", 1))
     n_envs = int(config.get("n_envs", 1))
     vec_env_type = str(config.get("vec_env_type", "subproc")).lower()
+    penalize_unhealthy = bool(config.get("penalize_unhealthy", False))
+    unhealthy_penalty = float(config.get("unhealthy_penalty", -1.0))
+    terminate_on_unhealthy = bool(config.get("terminate_on_unhealthy", False))
+    healthy_z_range = tuple(config.get("healthy_z_range", [0.2, 1.0]))
 
     create_dirs(config)
 
@@ -50,21 +48,37 @@ def train(
         set_seed(seed)
 
     print("=" * 60)
-    print(f"Training PPO on {env_id}")
+    print(f"Training {algorithm} on {env_id}")
     print("=" * 60)
+    print(f"Version: {config['version']}")
     print(f"Total timesteps: {total_timesteps}")
     print(f"Environment copies: {n_envs}")
     print(f"Vector env type: {vec_env_type if n_envs > 1 else 'dummy'}")
+    print(f"Penalize unhealthy ant: {penalize_unhealthy}")
+    if penalize_unhealthy:
+        print(f"Unhealthy penalty per step: {unhealthy_penalty}")
+    print(f"Terminate on unhealthy ant: {terminate_on_unhealthy}")
+    if penalize_unhealthy or terminate_on_unhealthy:
+        print(f"Healthy z range: {healthy_z_range}")
     print(f"Device: {device}")
     if resume_path is not None:
         print(f"Resume checkpoint: {resume_path}")
         print(f"Reset timestep counter: {reset_num_timesteps}")
-        print("PPO hyperparameters will be loaded from the checkpoint.")
+        print(f"{algorithm} hyperparameters will be loaded from the checkpoint.")
     else:
         print(f"Learning rate: {learning_rate}")
-        print(f"N steps: {n_steps}")
         print(f"Batch size: {batch_size}")
         print(f"Gamma: {gamma}")
+        if algorithm == "PPO":
+            print(f"N steps: {int(config['n_steps'])}")
+            print(f"N epochs: {int(config.get('n_epochs', 10))}")
+            print(f"GAE lambda: {float(config.get('gae_lambda', 0.95))}")
+        else:
+            print(f"Buffer size: {int(config.get('buffer_size', 1_000_000))}")
+            print(f"Learning starts: {int(config.get('learning_starts', 10_000))}")
+            print(f"Train freq: {config.get('train_freq', 1)}")
+            print(f"Gradient steps: {int(config.get('gradient_steps', 1))}")
+            print(f"Use HER: {bool(config.get('use_her', False))}")
     if seed is not None:
         print(f"Seed: {seed}")
     print("=" * 60)
@@ -76,6 +90,10 @@ def train(
         seed=seed,
         monitor_dir=monitor_dir,
         vec_env_type=vec_env_type,
+        penalize_unhealthy=penalize_unhealthy,
+        unhealthy_penalty=unhealthy_penalty,
+        terminate_on_unhealthy=terminate_on_unhealthy,
+        healthy_z_range=healthy_z_range,
     )
     try:
         if not isinstance(env.observation_space, DictSpace):
@@ -89,7 +107,8 @@ def train(
             if not resume_model_path.exists():
                 raise FileNotFoundError(f"Resume checkpoint not found: {resume_model_path}")
 
-            model = PPO.load(
+            model_class = get_model_class(algorithm)
+            model = model_class.load(
                 resume_model_path,
                 env=env,
                 tensorboard_log=str(tensorboard_log),
@@ -98,17 +117,9 @@ def train(
             )
             print(f"Loaded checkpoint with {model.num_timesteps} previous timesteps.")
         else:
-            # AntMaze uses dictionary observations, so SB3 needs MultiInputPolicy.
-            model = PPO(
-                policy="MultiInputPolicy",
+            model = build_model(
+                config=config,
                 env=env,
-                learning_rate=learning_rate,
-                n_steps=n_steps,
-                batch_size=batch_size,
-                n_epochs=n_epochs,
-                gamma=gamma,
-                gae_lambda=gae_lambda,
-                ent_coef=ent_coef,
                 tensorboard_log=str(tensorboard_log),
                 verbose=verbose,
                 seed=seed,
@@ -117,8 +128,9 @@ def train(
 
         callback = None
         if checkpoint_freq > 0:
+            save_freq = max(checkpoint_freq // n_envs, 1)
             callback = CheckpointCallback(
-                save_freq=checkpoint_freq,
+                save_freq=save_freq,
                 save_path=str(checkpoint_dir),
                 name_prefix=f"{final_model_name}_step",
                 save_replay_buffer=False,
@@ -152,7 +164,7 @@ def train(
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Train PPO agent on AntMaze."
+        description="Train an SB3 agent on AntMaze."
     )
     parser.add_argument(
         '--config',

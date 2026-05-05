@@ -10,6 +10,53 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 _ROBOTICS_REGISTERED = False
 
 
+class UnhealthyAntPenalty(gym.Wrapper):
+    """Apply a per-step penalty when the Ant falls or flips."""
+
+    def __init__(
+        self,
+        env: gym.Env,
+        penalize_unhealthy: bool = True,
+        unhealthy_penalty: float = -1.0,
+        terminate_on_unhealthy: bool = False,
+        healthy_z_range: tuple[float, float] = (0.2, 1.0),
+    ):
+        super().__init__(env)
+        self.penalize_unhealthy = penalize_unhealthy
+        self.unhealthy_penalty = unhealthy_penalty
+        self.terminate_on_unhealthy = terminate_on_unhealthy
+        self.healthy_z_range = healthy_z_range
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        unhealthy = self._is_unhealthy(obs)
+        penalty = self.unhealthy_penalty if unhealthy and self.penalize_unhealthy else 0.0
+        reward = float(reward) + penalty
+
+        if unhealthy and self.terminate_on_unhealthy and not terminated:
+            terminated = True
+
+        info["unhealthy"] = unhealthy
+        info["unhealthy_penalty"] = penalty
+        info["unhealthy_termination"] = unhealthy and terminated
+        return obs, reward, terminated, truncated, info
+
+    def _is_unhealthy(self, obs) -> bool:
+        if isinstance(obs, dict) and "observation" in obs:
+            try:
+                torso_z = float(obs["observation"][0])
+                min_z, max_z = self.healthy_z_range
+                return not (min_z <= torso_z <= max_z)
+            except (TypeError, ValueError, IndexError):
+                pass
+
+        ant_env = getattr(self.unwrapped, "ant_env", None)
+        if ant_env is not None and hasattr(ant_env, "is_healthy"):
+            return not bool(ant_env.is_healthy)
+
+        return False
+
+
 def register_robotics_envs() -> None:
     """Register Gymnasium Robotics environments once per Python process."""
     global _ROBOTICS_REGISTERED
@@ -39,6 +86,10 @@ def make_env(
     render_mode: str | None = None,
     seed: int | None = None,
     monitor_dir: str | Path | None = None,
+    penalize_unhealthy: bool = False,
+    unhealthy_penalty: float = -1.0,
+    terminate_on_unhealthy: bool = False,
+    healthy_z_range: tuple[float, float] = (0.2, 1.0),
 ) -> gym.Env:
     """Create a monitored Gymnasium Robotics environment."""
     register_robotics_envs()
@@ -54,6 +105,15 @@ def make_env(
             f"Could not create environment `{env_id}`. Check that "
             "gymnasium-robotics is installed and the environment ID is valid."
         ) from exc
+
+    if penalize_unhealthy or terminate_on_unhealthy:
+        env = UnhealthyAntPenalty(
+            env,
+            penalize_unhealthy=penalize_unhealthy,
+            unhealthy_penalty=unhealthy_penalty,
+            terminate_on_unhealthy=terminate_on_unhealthy,
+            healthy_z_range=healthy_z_range,
+        )
 
     if seed is not None:
         env.reset(seed=seed)
@@ -76,6 +136,10 @@ def _make_env_fn(
     render_mode: str | None = None,
     seed: int | None = None,
     monitor_dir: str | Path | None = None,
+    penalize_unhealthy: bool = False,
+    unhealthy_penalty: float = -1.0,
+    terminate_on_unhealthy: bool = False,
+    healthy_z_range: tuple[float, float] = (0.2, 1.0),
 ) -> Callable[[], gym.Env]:
     """Create a thunk used by Stable-Baselines3 vectorized environments."""
 
@@ -90,6 +154,10 @@ def _make_env_fn(
             render_mode=render_mode,
             seed=env_seed,
             monitor_dir=env_monitor_dir,
+            penalize_unhealthy=penalize_unhealthy,
+            unhealthy_penalty=unhealthy_penalty,
+            terminate_on_unhealthy=terminate_on_unhealthy,
+            healthy_z_range=healthy_z_range,
         )
 
     return _init
@@ -102,6 +170,10 @@ def make_vec_env(
     seed: int | None = None,
     monitor_dir: str | Path | None = None,
     vec_env_type: str = "subproc",
+    penalize_unhealthy: bool = False,
+    unhealthy_penalty: float = -1.0,
+    terminate_on_unhealthy: bool = False,
+    healthy_z_range: tuple[float, float] = (0.2, 1.0),
 ) -> VecEnv:
     """Create multiple monitored AntMaze environment copies for one PPO policy."""
     if n_envs < 1:
@@ -114,6 +186,10 @@ def make_vec_env(
             render_mode=render_mode,
             seed=seed,
             monitor_dir=monitor_dir,
+            penalize_unhealthy=penalize_unhealthy,
+            unhealthy_penalty=unhealthy_penalty,
+            terminate_on_unhealthy=terminate_on_unhealthy,
+            healthy_z_range=healthy_z_range,
         )
         for rank in range(n_envs)
     ]

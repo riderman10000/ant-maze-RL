@@ -1,43 +1,43 @@
 # AntMaze Deep Reinforcement Learning
 
-A beginner-friendly, research-organized codebase for Gymnasium Robotics AntMaze experiments using Stable-Baselines3.
+A beginner-friendly, research-organized Gymnasium Robotics AntMaze codebase using Stable-Baselines3.
 
-This is a fresh deep reinforcement learning project. It is not a continuation of a tabular Q-learning GridWorld implementation. AntMaze has continuous actions and dictionary observations, so this code uses Stable-Baselines3 policies and starts with PPO plus `MultiInputPolicy`.
-
-## Why Start Here
-
-`AntMaze_UMazeDense-v5` is the first environment because it is the easiest AntMaze setup to debug:
-
-- U-Maze is the smallest maze layout.
-- Dense rewards provide a stronger learning signal than sparse rewards.
-- PPO is a simple first baseline before trying off-policy methods.
-- Once the pipeline works, the same structure can move to larger or sparse AntMaze variants.
+This is a fresh DRL project, not tabular Q-learning. AntMaze has continuous actions and dictionary observations, so all algorithms use `MultiInputPolicy`.
 
 ## Project Structure
 
-This repository folder is the project root. You can name the folder `antmaze_drl` if you want it to match the diagram exactly.
-
 ```text
 .
-|-- README.md
-|-- requirements.txt
 |-- configs/
-|   `-- ppo_antmaze_umaze_dense.yaml
 |-- src/
-|   |-- __init__.py
-|   |-- make_env.py
-|   |-- train.py
-|   |-- evaluate.py
-|   |-- visualize.py
-|   `-- utils.py
-|-- checkpoints/
+|-- checkpoints-<algorithm>-<version>/
 |-- logs/
-`-- results/
+`-- results-<algorithm>-<version>/
+```
+
+Configs use:
+
+```yaml
+algorithm: PPO
+version: v1
+result_dir: auto
+checkpoint_dir: auto
+tensorboard_log: auto
+monitor_dir: auto
+final_model_name: auto
+```
+
+`auto` expands to names like:
+
+```text
+results-ppo-v1
+checkpoints-ppo-v1
+logs/tensorboard-ppo-v1
+logs/monitor-ppo-v1
+ppo_v1_final.zip
 ```
 
 ## Installation
-
-Create and activate a virtual environment, then install dependencies:
 
 ```bash
 python -m venv .venv
@@ -46,177 +46,106 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-If installation fails, use a Python version supported by PyTorch, Stable-Baselines3, MuJoCo, and Gymnasium Robotics. Python 3.10-3.12 is a conservative choice for this stack.
-
-Quick import check:
+Quick check:
 
 ```bash
 python -c "import gymnasium, gymnasium_robotics, stable_baselines3, mujoco; print('AntMaze stack OK')"
 ```
 
-## Train
+## Phases
+
+| Phase | Config | Result folder | Final model |
+|---|---|---|---|
+| 1 PPO UMaze Dense | `configs/ppo_antmaze_umaze_dense.yaml` | `results-ppo-v1` | `checkpoints-ppo-v1/ppo_v1_final.zip` |
+| 2 SAC UMaze Dense | `configs/sac_antmaze_umaze_dense.yaml` | `results-sac-v1` | `checkpoints-sac-v1/sac_v1_final.zip` |
+| 3 PPO Medium Dense | `configs/ppo_antmaze_medium_dense.yaml` | `results-ppo-v2` | `checkpoints-ppo-v2/ppo_v2_final.zip` |
+| 3 SAC Medium Dense | `configs/sac_antmaze_medium_dense.yaml` | `results-sac-v2` | `checkpoints-sac-v2/sac_v2_final.zip` |
+| 4 SAC UMaze Sparse | `configs/sac_antmaze_umaze_sparse.yaml` | `results-sac-v3` | `checkpoints-sac-v3/sac_v3_final.zip` |
+| 4 TD3 UMaze Sparse | `configs/td3_antmaze_umaze_sparse.yaml` | `results-td3-v3` | `checkpoints-td3-v3/td3_v3_final.zip` |
+| 5 SAC+HER UMaze Sparse | `configs/sac_antmaze_umaze_sparse_her.yaml` | `results-sac-v4` | `checkpoints-sac-v4/sac_v4_final.zip` |
+
+## Commands
+
+Phase 1:
 
 ```bash
 python -m src.train --config configs/ppo_antmaze_umaze_dense.yaml
+python -m src.evaluate --config configs/ppo_antmaze_umaze_dense.yaml --model checkpoints-ppo-v1/ppo_v1_final.zip --episodes 50
+python -m src.visualize --config configs/ppo_antmaze_umaze_dense.yaml --model checkpoints-ppo-v1/ppo_v1_final.zip
 ```
 
-Training uses:
+Phase 2:
 
-- `AntMaze_UMazeDense-v5`
-- Stable-Baselines3 `PPO`
-- `MultiInputPolicy` for dictionary observations
-- vectorized AntMaze copies from `n_envs`
-- TensorBoard logs in `logs/tensorboard`
-- Monitor logs in `logs/monitor`
-- periodic checkpoints in `checkpoints`
-- final model at `checkpoints/ppo_antmaze_umaze_dense_final.zip`
-
-Parallel environment training is controlled in the config:
-
-```yaml
-n_envs: 4
-vec_env_type: subproc
+```bash
+python -m src.train --config configs/sac_antmaze_umaze_dense.yaml
+python -m src.evaluate --config configs/sac_antmaze_umaze_dense.yaml --model checkpoints-sac-v1/sac_v1_final.zip --episodes 50
+python -m src.visualize --config configs/sac_antmaze_umaze_dense.yaml --model checkpoints-sac-v1/sac_v1_final.zip
 ```
 
-This is still one PPO agent. The same policy collects experience from multiple independent AntMaze environments. With PPO, each update collects roughly `n_envs * n_steps` transitions, so `n_envs: 4` and `n_steps: 2048` gives about 8192 transitions per update.
+Phase 3:
 
-Continue training from an existing `.zip` checkpoint:
+```bash
+python -m src.train --config configs/ppo_antmaze_medium_dense.yaml
+python -m src.evaluate --config configs/ppo_antmaze_medium_dense.yaml --model checkpoints-ppo-v2/ppo_v2_final.zip --episodes 50
+python -m src.visualize --config configs/ppo_antmaze_medium_dense.yaml --model checkpoints-ppo-v2/ppo_v2_final.zip
+
+python -m src.train --config configs/sac_antmaze_medium_dense.yaml
+python -m src.evaluate --config configs/sac_antmaze_medium_dense.yaml --model checkpoints-sac-v2/sac_v2_final.zip --episodes 50
+python -m src.visualize --config configs/sac_antmaze_medium_dense.yaml --model checkpoints-sac-v2/sac_v2_final.zip
+```
+
+Phase 4:
+
+```bash
+python -m src.train --config configs/sac_antmaze_umaze_sparse.yaml
+python -m src.evaluate --config configs/sac_antmaze_umaze_sparse.yaml --model checkpoints-sac-v3/sac_v3_final.zip --episodes 50
+python -m src.visualize --config configs/sac_antmaze_umaze_sparse.yaml --model checkpoints-sac-v3/sac_v3_final.zip
+
+python -m src.train --config configs/td3_antmaze_umaze_sparse.yaml
+python -m src.evaluate --config configs/td3_antmaze_umaze_sparse.yaml --model checkpoints-td3-v3/td3_v3_final.zip --episodes 50
+python -m src.visualize --config configs/td3_antmaze_umaze_sparse.yaml --model checkpoints-td3-v3/td3_v3_final.zip
+```
+
+Phase 5:
+
+```bash
+python -m src.train --config configs/sac_antmaze_umaze_sparse_her.yaml
+python -m src.evaluate --config configs/sac_antmaze_umaze_sparse_her.yaml --model checkpoints-sac-v4/sac_v4_final.zip --episodes 50
+python -m src.visualize --config configs/sac_antmaze_umaze_sparse_her.yaml --model checkpoints-sac-v4/sac_v4_final.zip
+```
+
+Resume any run:
 
 ```bash
 python -m src.train \
-  --config configs/ppo_antmaze_umaze_dense.yaml \
-  --resume checkpoints/ppo_antmaze_umaze_dense_final_step_750000_steps.zip
+  --config configs/sac_antmaze_umaze_dense.yaml \
+  --resume checkpoints-sac-v1/sac_v1_final_step_1000000_steps.zip
 ```
 
-When resuming, `total_timesteps` in the config means additional timesteps to train. For example, if the checkpoint already has 750k steps and the config says `total_timesteps: 3000000`, the resumed run trains 3M more steps.
+## Metrics
 
-The checkpoint keeps the PPO network, optimizer state, and PPO hyperparameters from the saved model. Use this for continuing a run. To test new PPO hyperparameters cleanly, start a fresh run.
-
-## Evaluate
-
-```bash
-python -m src.evaluate \
-  --config configs/ppo_antmaze_umaze_dense.yaml \
-  --model checkpoints/ppo_antmaze_umaze_dense_final.zip \
-  --episodes 10
-```
-
-This prints reward, episode length, and success status when the environment reports `success` or `is_success`. It also saves:
+Evaluation writes:
 
 ```text
-results/evaluation_results.csv
-results/evaluation_rewards.png
-results/evaluation_distances.png
-results/best_rollout_trace.csv
-results/best_rollout_distance_over_time.png
-results/best_rollout_xy_trajectory.png
+evaluation_results.csv
+evaluation_rewards.png
+evaluation_distances.png
+best_rollout_trace.csv
+best_rollout_distance_over_time.png
+best_rollout_xy_trajectory.png
 ```
 
-Useful comparison metrics:
+Compare models with:
 
-- success rate: main benchmark-style metric
-- average final distance: how close the ant ends to the goal
-- average minimum distance: whether the ant ever gets close, even if it drifts away
-- distance over time: whether a rollout steadily approaches the goal
-- xy trajectory: whether the ant follows a plausible route through the maze
-
-## Visualize
-
-Save an MP4 rollout from a trained model:
-
-```bash
-python -m src.visualize \
-  --config configs/ppo_antmaze_umaze_dense.yaml \
-  --model checkpoints/ppo_antmaze_umaze_dense_final.zip
-```
-
-Default video output:
-
-```text
-results/antmaze_rollout.mp4
-```
-
-Run a random policy before training as a sanity check:
-
-```bash
-python -m src.visualize --config configs/ppo_antmaze_umaze_dense.yaml --random
-```
-
-Use human rendering instead of saving video:
-
-```bash
-python -m src.visualize \
-  --config configs/ppo_antmaze_umaze_dense.yaml \
-  --model checkpoints/ppo_antmaze_umaze_dense_final.zip \
-  --render-mode human \
-  --no-video
-```
-
-Choose a custom video path:
-
-```bash
-python -m src.visualize \
-  --config configs/ppo_antmaze_umaze_dense.yaml \
-  --model checkpoints/ppo_antmaze_umaze_dense_final.zip \
-  --video results/my_rollout.mp4
-```
-
-Visualization also saves per-rollout diagnostic plots by default:
-
-```text
-results/rollouts/model_episode_001_trace.csv
-results/rollouts/model_episode_001_distance_over_time.png
-results/rollouts/model_episode_001_xy_trajectory.png
-```
-
-## TensorBoard
-
-```bash
-tensorboard --logdir logs/tensorboard
-```
-
-Then open the local TensorBoard URL printed by the command.
-
-## Configuration
-
-The first experiment lives in:
-
-```text
-configs/ppo_antmaze_umaze_dense.yaml
-```
-
-Important fields:
-
-```yaml
-env_id: AntMaze_UMazeDense-v5
-algorithm: PPO
-total_timesteps: 100000
-learning_rate: 0.0003
-n_steps: 2048
-batch_size: 64
-gamma: 0.99
-seed: 42
-render_mode: rgb_array
-tensorboard_log: logs/tensorboard
-monitor_dir: logs/monitor
-checkpoint_dir: checkpoints
-checkpoint_freq: 25000
-result_dir: results
-final_model_name: ppo_antmaze_umaze_dense_final
-```
-
-## Next Steps
-
-Good follow-up experiments:
-
-- switch to `AntMaze_MediumDense-v5`
-- train longer, for example 500k to 2M timesteps
-- add SAC as an off-policy baseline
-- add TD3 as another continuous-control baseline
-- try sparse reward AntMaze variants
-- use HER-style replay with an off-policy algorithm if sparse rewards are too hard
-- add simple plots from `results/evaluation_results.csv`
+- success rate
+- average minimum distance
+- average final distance
+- unhealthy steps and unhealthy penalty
+- distance-to-goal over time
+- xy trajectory toward the goal
 
 ## Notes
 
-Gymnasium Robotics environments are registered in `src/make_env.py` before calling `gym.make(...)`. Training intentionally uses Stable-Baselines3 instead of a custom PPO implementation, and no tabular Q-learning code is included.
+`penalize_unhealthy` adds a negative reward every timestep the ant is unhealthy or flipped. With `terminate_on_unhealthy: false`, the episode continues and the penalty grows the longer the ant stays upside down.
+
+HER is configured as a replay buffer for SAC in `sac_antmaze_umaze_sparse_her.yaml`; it is not a separate algorithm.

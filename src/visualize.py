@@ -4,8 +4,8 @@ import argparse
 from pathlib import Path
 
 import imageio.v2 as imageio
-from stable_baselines3 import PPO
 
+from src.algorithms import get_algorithm_name, get_model_class
 from src.make_env import make_env
 from src.utils import (
     achieved_xy,
@@ -81,9 +81,14 @@ def visualize(
         random_policy = True
 
     env_id = config["env_id"]
+    algorithm = get_algorithm_name(config)
     seed = config.get("seed")
     if seed is not None:
         seed = int(seed)
+    penalize_unhealthy = bool(config.get("penalize_unhealthy", False))
+    unhealthy_penalty = float(config.get("unhealthy_penalty", -1.0))
+    terminate_on_unhealthy = bool(config.get("terminate_on_unhealthy", False))
+    healthy_z_range = tuple(config.get("healthy_z_range", [0.2, 1.0]))
 
     if render_mode is None:
         render_mode = config.get("render_mode", "rgb_array")
@@ -99,7 +104,7 @@ def visualize(
 
     policy_label = "random policy" if random_policy else "trained model"
     print("=" * 60)
-    print(f"Visualizing {policy_label} on {env_id}")
+    print(f"Visualizing {algorithm} {policy_label} on {env_id}")
     if not random_policy:
         print(f"Model: {model_path}")
     print(f"Episodes: {num_episodes}")
@@ -111,14 +116,23 @@ def visualize(
         print(f"Rollout plots: {Path(config['result_dir']) / 'rollouts'}")
     print("=" * 60)
 
-    env = make_env(env_id=env_id, render_mode=env_render_mode, seed=seed)
+    env = make_env(
+        env_id=env_id,
+        render_mode=env_render_mode,
+        seed=seed,
+        penalize_unhealthy=penalize_unhealthy,
+        unhealthy_penalty=unhealthy_penalty,
+        terminate_on_unhealthy=terminate_on_unhealthy,
+        healthy_z_range=healthy_z_range,
+    )
     model = None
     if not random_policy:
         model_file = ensure_zip_path(model_path)
         if not model_file.exists():
             env.close()
             raise FileNotFoundError(f"Model file not found: {model_file}")
-        model = PPO.load(model_file, env=env)
+        model_class = get_model_class(algorithm)
+        model = model_class.load(model_file, env=env)
 
     frames = []
     fps = int(getattr(env, "metadata", {}).get("render_fps", 30))
@@ -132,6 +146,9 @@ def visualize(
             episode_reward = 0.0
             episode_length = 0
             episode_success = None
+            episode_unhealthy_termination = False
+            episode_unhealthy_steps = 0
+            episode_unhealthy_penalty = 0.0
             min_distance = goal_distance(obs)
             distance_history = []
             step_history = []
@@ -160,6 +177,11 @@ def visualize(
                 episode_reward += float(reward)
                 episode_length += 1
                 done = terminated or truncated
+                if info.get("unhealthy", False):
+                    episode_unhealthy_steps += 1
+                    episode_unhealthy_penalty += float(info.get("unhealthy_penalty", 0.0))
+                if info.get("unhealthy_termination", False):
+                    episode_unhealthy_termination = True
 
                 distance = goal_distance(obs)
                 if distance is not None:
@@ -197,7 +219,10 @@ def visualize(
                 f"Length: {episode_length:5d} | "
                 f"Status: {status} | "
                 f"Min dist: {min_distance if min_distance is not None else float('nan'):.2f} | "
-                f"Final dist: {final_distance if final_distance is not None else float('nan'):.2f}"
+                f"Final dist: {final_distance if final_distance is not None else float('nan'):.2f} | "
+                f"Unhealthy steps: {episode_unhealthy_steps} | "
+                f"Unhealthy penalty: {episode_unhealthy_penalty:.2f} | "
+                f"Terminated by fall: {episode_unhealthy_termination}"
             )
 
             if save_plots and distance_history and xy_history:

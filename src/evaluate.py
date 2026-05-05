@@ -3,8 +3,7 @@
 import argparse
 from pathlib import Path
 
-from stable_baselines3 import PPO
-
+from src.algorithms import get_algorithm_name, get_model_class
 from src.make_env import make_env
 from src.utils import (
     achieved_xy,
@@ -28,15 +27,20 @@ def evaluate(
     model_path: str,
     num_episodes: int = 10,
 ) -> None:
-    """Evaluate a trained PPO agent."""
+    """Evaluate a trained SB3 agent."""
     if num_episodes <= 0:
         raise ValueError("--episodes must be greater than zero")
 
     env_id = config["env_id"]
+    algorithm = get_algorithm_name(config)
     result_dir = Path(config["result_dir"])
     seed = config.get("seed")
     if seed is not None:
         seed = int(seed)
+    penalize_unhealthy = bool(config.get("penalize_unhealthy", False))
+    unhealthy_penalty = float(config.get("unhealthy_penalty", -1.0))
+    terminate_on_unhealthy = bool(config.get("terminate_on_unhealthy", False))
+    healthy_z_range = tuple(config.get("healthy_z_range", [0.2, 1.0]))
 
     create_dirs(config)
     model_path = ensure_zip_path(model_path)
@@ -44,13 +48,22 @@ def evaluate(
         raise FileNotFoundError(f"Model file not found: {model_path}")
 
     print("=" * 60)
-    print(f"Evaluating model on {env_id}")
+    print(f"Evaluating {algorithm} model on {env_id}")
     print(f"Model: {model_path}")
     print(f"Episodes: {num_episodes}")
     print("=" * 60)
 
-    env = make_env(env_id=env_id, render_mode=None, seed=seed)
-    model = PPO.load(model_path, env=env)
+    env = make_env(
+        env_id=env_id,
+        render_mode=None,
+        seed=seed,
+        penalize_unhealthy=penalize_unhealthy,
+        unhealthy_penalty=unhealthy_penalty,
+        terminate_on_unhealthy=terminate_on_unhealthy,
+        healthy_z_range=healthy_z_range,
+    )
+    model_class = get_model_class(algorithm)
+    model = model_class.load(model_path, env=env)
 
     episodes = []
     rewards = []
@@ -60,6 +73,9 @@ def evaluate(
     min_distances = []
     final_distances = []
     success_steps = []
+    unhealthy_terminations = []
+    unhealthy_steps = []
+    unhealthy_penalties = []
     best_rollout = None
     best_min_distance = None
 
@@ -75,6 +91,9 @@ def evaluate(
             initial_distance = min_distance
             final_distance = min_distance
             first_success_step = None
+            episode_unhealthy_termination = False
+            episode_unhealthy_steps = 0
+            episode_unhealthy_penalty = 0.0
             distance_history = []
             xy_history = []
             step_history = []
@@ -93,6 +112,11 @@ def evaluate(
                 episode_reward += float(reward)
                 episode_length += 1
                 done = terminated or truncated
+                if info.get("unhealthy", False):
+                    episode_unhealthy_steps += 1
+                    episode_unhealthy_penalty += float(info.get("unhealthy_penalty", 0.0))
+                if info.get("unhealthy_termination", False):
+                    episode_unhealthy_termination = True
 
                 distance = goal_distance(obs)
                 if distance is not None:
@@ -127,6 +151,9 @@ def evaluate(
             min_distances.append(min_distance)
             final_distances.append(final_distance)
             success_steps.append(first_success_step)
+            unhealthy_terminations.append(episode_unhealthy_termination)
+            unhealthy_steps.append(episode_unhealthy_steps)
+            unhealthy_penalties.append(episode_unhealthy_penalty)
 
             if min_distance is not None:
                 if best_min_distance is None or min_distance < best_min_distance:
@@ -150,7 +177,8 @@ def evaluate(
                 f"Length: {episode_length:5d} | "
                 f"Status: {status} | "
                 f"Min dist: {min_distance if min_distance is not None else float('nan'):.2f} | "
-                f"Final dist: {final_distance if final_distance is not None else float('nan'):.2f}"
+                f"Final dist: {final_distance if final_distance is not None else float('nan'):.2f} | "
+                f"Unhealthy steps: {episode_unhealthy_steps}"
             )
     finally:
         env.close()
@@ -166,6 +194,12 @@ def evaluate(
         print(f"  Average minimum distance: {sum(valid_min_distances) / len(valid_min_distances):.2f}")
     if valid_final_distances:
         print(f"  Average final distance: {sum(valid_final_distances) / len(valid_final_distances):.2f}")
+    if penalize_unhealthy:
+        print(f"  Average unhealthy steps: {sum(unhealthy_steps) / len(unhealthy_steps):.2f}")
+        print(f"  Average unhealthy penalty: {sum(unhealthy_penalties) / len(unhealthy_penalties):.2f}")
+    if terminate_on_unhealthy:
+        fall_rate = sum(unhealthy_terminations) / len(unhealthy_terminations) * 100
+        print(f"  Unhealthy termination rate: {fall_rate:.1f}%")
     if len(success_values) > 0:
         success_rate = sum(success_values) / len(success_values) * 100
         print(
@@ -186,6 +220,9 @@ def evaluate(
         min_distances,
         final_distances,
         success_steps,
+        unhealthy_terminations,
+        unhealthy_steps,
+        unhealthy_penalties,
         csv_path,
     )
 
@@ -232,7 +269,7 @@ def evaluate(
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Evaluate a trained PPO agent on AntMaze."
+        description="Evaluate a trained SB3 agent on AntMaze."
     )
     parser.add_argument(
         '--config',

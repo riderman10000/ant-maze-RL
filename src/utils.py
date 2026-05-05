@@ -7,6 +7,29 @@ from typing import Any
 import yaml
 
 
+def normalize_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Fill config fields that are derived from algorithm/version."""
+    algorithm = str(config.get("algorithm", "PPO")).lower()
+    version = str(config.get("version", config.get("experiment_version", "v1")))
+    config["version"] = version
+
+    run_id = f"{algorithm}-{version}"
+    run_name = run_id.replace("-", "_")
+
+    if not config.get("result_dir") or str(config.get("result_dir")).lower() == "auto":
+        config["result_dir"] = f"results-{run_id}"
+    if not config.get("checkpoint_dir") or str(config.get("checkpoint_dir")).lower() == "auto":
+        config["checkpoint_dir"] = f"checkpoints-{run_id}"
+    if not config.get("tensorboard_log") or str(config.get("tensorboard_log")).lower() == "auto":
+        config["tensorboard_log"] = f"logs/tensorboard-{run_id}"
+    if not config.get("monitor_dir") or str(config.get("monitor_dir")).lower() == "auto":
+        config["monitor_dir"] = f"logs/monitor-{run_id}"
+    if not config.get("final_model_name") or str(config.get("final_model_name")).lower() == "auto":
+        config["final_model_name"] = f"{run_name}_final"
+
+    return config
+
+
 def load_config(config_path: str | Path) -> dict[str, Any]:
     """Load a YAML experiment config."""
     path = Path(config_path)
@@ -18,11 +41,12 @@ def load_config(config_path: str | Path) -> dict[str, Any]:
 
     if not isinstance(config, dict):
         raise ValueError(f"Config file must contain a YAML mapping: {path}")
-    return config
+    return normalize_config(config)
 
 
 def create_dirs(config: dict[str, Any]) -> None:
     """Create the standard output directories used by this project."""
+    normalize_config(config)
     dirs = [
         config.get("tensorboard_log"),
         config.get("monitor_dir"),
@@ -120,6 +144,9 @@ def save_evaluation_results(
     min_distances: list[float | None] | None,
     final_distances: list[float | None] | None,
     success_steps: list[int | None] | None,
+    unhealthy_terminations: list[bool] | None,
+    unhealthy_steps: list[int] | None,
+    unhealthy_penalties: list[float] | None,
     output_path: str | Path,
 ) -> Path:
     """Save evaluation results to CSV and return the output path."""
@@ -138,6 +165,9 @@ def save_evaluation_results(
             "min_distance": min_distances,
             "final_distance": final_distances,
             "success_step": success_steps,
+            "unhealthy_termination": unhealthy_terminations,
+            "unhealthy_steps": unhealthy_steps,
+            "unhealthy_penalty": unhealthy_penalties,
         }
     )
     df.to_csv(path, index=False)

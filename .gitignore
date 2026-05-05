@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE/local metadata
+.vscode/
+.agents/
+.codex/
+
+# Stable-Baselines3 models and checkpoints
+*.zip
+checkpoints/
+checkpoints-*/
+models/
+
+# Experiment logs
+logs/
+events.out.tfevents*
+
+# Evaluation outputs and generated media
+results/
+results-*/
+*.mp4
+*.gif
+
+# Misc generated files
+.DS_Store

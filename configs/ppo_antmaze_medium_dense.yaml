@@ -1,21 +1,21 @@
-# Phase 1: PPO baseline on AntMaze UMaze dense reward
+# Phase 3: PPO on AntMaze Medium dense reward
 
-phase: 1
-version: v1
+phase: 3
+version: v2
 algorithm: PPO
 policy: MultiInputPolicy
 
 # Environment
-env_id: AntMaze_UMazeDense-v5
+env_id: AntMaze_MediumDense-v5
 n_envs: 4
-vec_env_type: subproc  # use dummy if subprocesses cause issues on your machine
+vec_env_type: subproc
 penalize_unhealthy: true
 unhealthy_penalty: -1.0
 terminate_on_unhealthy: false
 healthy_z_range: [0.2, 1.0]
 
 # Training parameters
-total_timesteps: 1000000
+total_timesteps: 3000000
 learning_rate: 0.00003
 n_steps: 2048
 batch_size: 64
