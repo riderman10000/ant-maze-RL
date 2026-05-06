@@ -17,6 +17,7 @@ from src.utils import (
     load_config,
     save_rollout_distance_plot,
     save_rollout_trace,
+    save_topdown_map_trajectory_plot,
     save_xy_trajectory_plot,
 )
 
@@ -58,6 +59,39 @@ def _save_video(frames: list, output_path: Path, fps: int) -> None:
         for frame in frames:
             writer.append_data(frame)
     print(f"Video saved to {output_path}")
+
+
+def _get_maze_plot_data(env) -> dict | None:
+    """Read the AntMaze wall layout in simulation xy coordinates."""
+    maze = getattr(env.unwrapped, "maze", None)
+    if maze is None:
+        return None
+
+    maze_map = getattr(maze, "maze_map", None)
+    cell_to_xy = getattr(maze, "cell_rowcol_to_xy", None)
+    if maze_map is None or cell_to_xy is None:
+        return None
+
+    try:
+        cell_size = float(getattr(maze, "maze_size_scaling", None))
+    except (TypeError, ValueError):
+        return None
+
+    cell_centers = {}
+    try:
+        for row, cells in enumerate(maze_map):
+            for col, _ in enumerate(cells):
+                xy = cell_to_xy((row, col))
+                cell_centers[(row, col)] = (float(xy[0]), float(xy[1]))
+    except Exception as exc:
+        print(f"Could not read AntMaze top-down map coordinates: {exc}")
+        return None
+
+    return {
+        "maze_map": maze_map,
+        "cell_centers": cell_centers,
+        "cell_size": cell_size,
+    }
 
 
 def visualize(
@@ -125,6 +159,10 @@ def visualize(
         terminate_on_unhealthy=terminate_on_unhealthy,
         healthy_z_range=healthy_z_range,
     )
+    maze_plot_data = _get_maze_plot_data(env)
+    if save_plots and maze_plot_data is None:
+        print("Top-down maze map was not available; saving regular rollout plots only.")
+
     model = None
     if not random_policy:
         model_file = ensure_zip_path(model_path)
@@ -249,6 +287,16 @@ def visualize(
                     rollout_dir / f"{name_prefix}_xy_trajectory.png",
                     title=f"XY Trajectory (Episode {eval_episode})",
                 )
+                if maze_plot_data is not None:
+                    save_topdown_map_trajectory_plot(
+                        xy_history,
+                        rollout_goal,
+                        maze_plot_data["maze_map"],
+                        maze_plot_data["cell_centers"],
+                        maze_plot_data["cell_size"],
+                        rollout_dir / f"{name_prefix}_topdown_map_trajectory.png",
+                        title=f"Top-Down Maze Trajectory (Episode {eval_episode})",
+                    )
     finally:
         env.close()
 

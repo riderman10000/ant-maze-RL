@@ -358,3 +358,135 @@ def save_xy_trajectory_plot(
 
     print(f"XY trajectory plot saved to {path}")
     return path
+
+
+def save_topdown_map_trajectory_plot(
+    xy_positions: list[tuple[float, float]],
+    goal: tuple[float, float] | None,
+    maze_map: list[list[Any]],
+    cell_centers: dict[tuple[int, int], tuple[float, float]],
+    cell_size: float,
+    output_path: str | Path,
+    title: str = "Ant Top-Down Maze Trajectory",
+) -> Path:
+    """Save the ant xy trajectory over the actual AntMaze map layout."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.patches as patches
+    import matplotlib.pyplot as plt
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    fig, ax = plt.subplots(figsize=(7, 7))
+
+    all_xs: list[float] = []
+    all_ys: list[float] = []
+    half_cell = cell_size / 2.0
+
+    for row, cells in enumerate(maze_map):
+        for col, cell in enumerate(cells):
+            center = cell_centers.get((row, col))
+            if center is None:
+                continue
+
+            x, y = center
+            all_xs.append(x)
+            all_ys.append(y)
+
+            cell_value = cell.item() if hasattr(cell, "item") else cell
+            is_wall = cell_value == 1 or str(cell_value) == "1"
+            face_color = "#2f2f2f" if is_wall else "#f7f7f2"
+            edge_color = "#555555" if is_wall else "#d8d8cf"
+
+            ax.add_patch(
+                patches.Rectangle(
+                    (x - half_cell, y - half_cell),
+                    cell_size,
+                    cell_size,
+                    facecolor=face_color,
+                    edgecolor=edge_color,
+                    linewidth=1.0,
+                    zorder=0,
+                )
+            )
+
+    xs = [xy[0] for xy in xy_positions]
+    ys = [xy[1] for xy in xy_positions]
+    all_xs.extend(xs)
+    all_ys.extend(ys)
+
+    if goal is not None:
+        all_xs.append(goal[0])
+        all_ys.append(goal[1])
+        ax.add_patch(
+            patches.Circle(
+                goal,
+                radius=0.45,
+                facecolor="tab:green",
+                edgecolor="tab:green",
+                alpha=0.18,
+                linewidth=1.5,
+                zorder=2,
+                label="Success radius",
+            )
+        )
+        ax.scatter(
+            goal[0],
+            goal[1],
+            color="tab:green",
+            marker="*",
+            s=220,
+            edgecolor="black",
+            linewidth=0.6,
+            zorder=5,
+            label="Goal",
+        )
+
+    if xs and ys:
+        ax.plot(
+            xs,
+            ys,
+            color="tab:blue",
+            linewidth=2.0,
+            zorder=3,
+            label="Ant trajectory",
+        )
+        ax.scatter(
+            xs[0],
+            ys[0],
+            color="tab:blue",
+            marker="o",
+            s=70,
+            zorder=4,
+            label="Start",
+        )
+        ax.scatter(
+            xs[-1],
+            ys[-1],
+            color="tab:orange",
+            marker="x",
+            s=90,
+            linewidth=2.0,
+            zorder=4,
+            label="End",
+        )
+
+    if all_xs and all_ys:
+        margin = cell_size * 0.75
+        ax.set_xlim(min(all_xs) - margin, max(all_xs) + margin)
+        ax.set_ylim(min(all_ys) - margin, max(all_ys) + margin)
+
+    ax.set_xlabel("simulation x")
+    ax.set_ylabel("simulation y")
+    ax.set_title(title)
+    ax.set_aspect("equal", adjustable="box")
+    ax.grid(True, alpha=0.2)
+    ax.legend(loc="best")
+    fig.tight_layout()
+    fig.savefig(path, dpi=180)
+    plt.close(fig)
+
+    print(f"Top-down map trajectory plot saved to {path}")
+    return path
