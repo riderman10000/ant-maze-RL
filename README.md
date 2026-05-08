@@ -19,7 +19,7 @@ Configs use:
 
 ```yaml
 algorithm: PPO
-version: v1
+version: v1-standard
 result_dir: auto
 checkpoint_dir: auto
 tensorboard_log: auto
@@ -30,12 +30,14 @@ final_model_name: auto
 `auto` expands to names like:
 
 ```text
-results-ppo-v1
-checkpoints-ppo-v1
-logs/tensorboard-ppo-v1
-logs/monitor-ppo-v1
-ppo_v1_final.zip
+results-ppo-v1-standard
+checkpoints-ppo-v1-standard
+logs/tensorboard-ppo-v1-standard
+logs/monitor-ppo-v1-standard
+ppo_v1_standard_final.zip
 ```
+
+The default configs use the original Gymnasium Robotics reward only. There is no custom flip penalty or custom termination wrapper in the standard baselines.
 
 ## Installation
 
@@ -56,13 +58,17 @@ python -c "import gymnasium, gymnasium_robotics, stable_baselines3, mujoco; prin
 
 | Phase | Config | Result folder | Final model |
 |---|---|---|---|
-| 1 PPO UMaze Dense | `configs/ppo_antmaze_umaze_dense.yaml` | `results-ppo-v1` | `checkpoints-ppo-v1/ppo_v1_final.zip` |
-| 2 SAC UMaze Dense | `configs/sac_antmaze_umaze_dense.yaml` | `results-sac-v1` | `checkpoints-sac-v1/sac_v1_final.zip` |
-| 3 PPO Medium Dense | `configs/ppo_antmaze_medium_dense.yaml` | `results-ppo-v2` | `checkpoints-ppo-v2/ppo_v2_final.zip` |
-| 3 SAC Medium Dense | `configs/sac_antmaze_medium_dense.yaml` | `results-sac-v2` | `checkpoints-sac-v2/sac_v2_final.zip` |
-| 4 SAC UMaze Sparse | `configs/sac_antmaze_umaze_sparse.yaml` | `results-sac-v3` | `checkpoints-sac-v3/sac_v3_final.zip` |
-| 4 TD3 UMaze Sparse | `configs/td3_antmaze_umaze_sparse.yaml` | `results-td3-v3` | `checkpoints-td3-v3/td3_v3_final.zip` |
-| 5 SAC+HER UMaze Sparse | `configs/sac_antmaze_umaze_sparse_her.yaml` | `results-sac-v4` | `checkpoints-sac-v4/sac_v4_final.zip` |
+| 1 PPO UMaze Dense | `configs/ppo_antmaze_umaze_dense.yaml` | `results-ppo-v1-standard` | `checkpoints-ppo-v1-standard/ppo_v1_standard_final.zip` |
+| 2 SAC UMaze Dense | `configs/sac_antmaze_umaze_dense.yaml` | `results-sac-v1-standard` | `checkpoints-sac-v1-standard/sac_v1_standard_final.zip` |
+| 3 PPO Medium Dense | `configs/ppo_antmaze_medium_dense.yaml` | `results-ppo-v2-standard` | `checkpoints-ppo-v2-standard/ppo_v2_standard_final.zip` |
+| 3 SAC Medium Dense | `configs/sac_antmaze_medium_dense.yaml` | `results-sac-v2-standard` | `checkpoints-sac-v2-standard/sac_v2_standard_final.zip` |
+| 4 SAC UMaze Sparse | `configs/sac_antmaze_umaze_sparse.yaml` | `results-sac-v3-standard` | `checkpoints-sac-v3-standard/sac_v3_standard_final.zip` |
+| 4 TD3 UMaze Sparse | `configs/td3_antmaze_umaze_sparse.yaml` | `results-td3-v3-standard` | `checkpoints-td3-v3-standard/td3_v3_standard_final.zip` |
+| 5 SAC+HER UMaze Sparse | `configs/sac_antmaze_umaze_sparse_her.yaml` | `results-sac-v4-standard` | `checkpoints-sac-v4-standard/sac_v4_standard_final.zip` |
+| 5 SAC UMaze Dense Fine-tune | `configs/sac_antmaze_umaze_dense_finetune.yaml` | `results-sac-v5-umaze-dense-finetune` | `checkpoints-sac-v5-umaze-dense-finetune/sac_v5_umaze_dense_finetune_final.zip` |
+| 5 SAC Medium Dense Fine-tune | `configs/sac_antmaze_medium_dense_finetune.yaml` | `results-sac-v5-medium-dense-finetune` | `checkpoints-sac-v5-medium-dense-finetune/sac_v5_medium_dense_finetune_final.zip` |
+| 5 TD3 UMaze Dense Fine-tune | `configs/td3_antmaze_umaze_dense_finetune.yaml` | `results-td3-v5-umaze-dense-finetune` | `checkpoints-td3-v5-umaze-dense-finetune/td3_v5_umaze_dense_finetune_final.zip` |
+| 5 TD3 Medium Dense Fine-tune | `configs/td3_antmaze_medium_dense_finetune.yaml` | `results-td3-v5-medium-dense-finetune` | `checkpoints-td3-v5-medium-dense-finetune/td3_v5_medium_dense_finetune_final.zip` |
 
 ## Commands
 
@@ -70,57 +76,109 @@ Phase 1:
 
 ```bash
 python -m src.train --config configs/ppo_antmaze_umaze_dense.yaml
-python -m src.evaluate --config configs/ppo_antmaze_umaze_dense.yaml --model checkpoints-ppo-v1/ppo_v1_final.zip --episodes 50
-python -m src.visualize --config configs/ppo_antmaze_umaze_dense.yaml --model checkpoints-ppo-v1/ppo_v1_final.zip
+python -m src.evaluate --config configs/ppo_antmaze_umaze_dense.yaml --model checkpoints-ppo-v1-standard/ppo_v1_standard_final.zip --episodes 50
+python -m src.visualize --config configs/ppo_antmaze_umaze_dense.yaml --model checkpoints-ppo-v1-standard/ppo_v1_standard_final.zip
 ```
 
 Phase 2:
 
 ```bash
 python -m src.train --config configs/sac_antmaze_umaze_dense.yaml
-python -m src.evaluate --config configs/sac_antmaze_umaze_dense.yaml --model checkpoints-sac-v1/sac_v1_final.zip --episodes 50
-python -m src.visualize --config configs/sac_antmaze_umaze_dense.yaml --model checkpoints-sac-v1/sac_v1_final.zip
+python -m src.evaluate --config configs/sac_antmaze_umaze_dense.yaml --model checkpoints-sac-v1-standard/sac_v1_standard_final.zip --episodes 50
+python -m src.visualize --config configs/sac_antmaze_umaze_dense.yaml --model checkpoints-sac-v1-standard/sac_v1_standard_final.zip
 ```
 
 Phase 3:
 
 ```bash
 python -m src.train --config configs/ppo_antmaze_medium_dense.yaml
-python -m src.evaluate --config configs/ppo_antmaze_medium_dense.yaml --model checkpoints-ppo-v2/ppo_v2_final.zip --episodes 50
-python -m src.visualize --config configs/ppo_antmaze_medium_dense.yaml --model checkpoints-ppo-v2/ppo_v2_final.zip
+python -m src.evaluate --config configs/ppo_antmaze_medium_dense.yaml --model checkpoints-ppo-v2-standard/ppo_v2_standard_final.zip --episodes 50
+python -m src.visualize --config configs/ppo_antmaze_medium_dense.yaml --model checkpoints-ppo-v2-standard/ppo_v2_standard_final.zip
 
 python -m src.train --config configs/sac_antmaze_medium_dense.yaml
-python -m src.evaluate --config configs/sac_antmaze_medium_dense.yaml --model checkpoints-sac-v2/sac_v2_final.zip --episodes 50
-python -m src.visualize --config configs/sac_antmaze_medium_dense.yaml --model checkpoints-sac-v2/sac_v2_final.zip
+python -m src.evaluate --config configs/sac_antmaze_medium_dense.yaml --model checkpoints-sac-v2-standard/sac_v2_standard_final.zip --episodes 50
+python -m src.visualize --config configs/sac_antmaze_medium_dense.yaml --model checkpoints-sac-v2-standard/sac_v2_standard_final.zip
 ```
 
 Phase 4:
 
 ```bash
 python -m src.train --config configs/sac_antmaze_umaze_sparse.yaml
-python -m src.evaluate --config configs/sac_antmaze_umaze_sparse.yaml --model checkpoints-sac-v3/sac_v3_final.zip --episodes 50
-python -m src.visualize --config configs/sac_antmaze_umaze_sparse.yaml --model checkpoints-sac-v3/sac_v3_final.zip
+python -m src.evaluate --config configs/sac_antmaze_umaze_sparse.yaml --model checkpoints-sac-v3-standard/sac_v3_standard_final.zip --episodes 50
+python -m src.visualize --config configs/sac_antmaze_umaze_sparse.yaml --model checkpoints-sac-v3-standard/sac_v3_standard_final.zip
 
 python -m src.train --config configs/td3_antmaze_umaze_sparse.yaml
-python -m src.evaluate --config configs/td3_antmaze_umaze_sparse.yaml --model checkpoints-td3-v3/td3_v3_final.zip --episodes 50
-python -m src.visualize --config configs/td3_antmaze_umaze_sparse.yaml --model checkpoints-td3-v3/td3_v3_final.zip
+python -m src.evaluate --config configs/td3_antmaze_umaze_sparse.yaml --model checkpoints-td3-v3-standard/td3_v3_standard_final.zip --episodes 50
+python -m src.visualize --config configs/td3_antmaze_umaze_sparse.yaml --model checkpoints-td3-v3-standard/td3_v3_standard_final.zip
 ```
 
 Phase 5:
 
 ```bash
 python -m src.train --config configs/sac_antmaze_umaze_sparse_her.yaml
-python -m src.evaluate --config configs/sac_antmaze_umaze_sparse_her.yaml --model checkpoints-sac-v4/sac_v4_final.zip --episodes 50
-python -m src.visualize --config configs/sac_antmaze_umaze_sparse_her.yaml --model checkpoints-sac-v4/sac_v4_final.zip
+python -m src.evaluate --config configs/sac_antmaze_umaze_sparse_her.yaml --model checkpoints-sac-v4-standard/sac_v4_standard_final.zip --episodes 50
+python -m src.visualize --config configs/sac_antmaze_umaze_sparse_her.yaml --model checkpoints-sac-v4-standard/sac_v4_standard_final.zip
 ```
 
-Resume any run:
+Phase 5 dense fine-tuning from an existing SAC checkpoint:
+
+```bash
+python -m src.train \
+  --config configs/sac_antmaze_umaze_dense_finetune.yaml \
+  --init-weights checkpoints-sac-v4-standard/sac_v4_standard_final_step_900000_steps.zip
+
+python -m src.evaluate \
+  --config configs/sac_antmaze_umaze_dense_finetune.yaml \
+  --model checkpoints-sac-v5-umaze-dense-finetune/sac_v5_umaze_dense_finetune_final.zip \
+  --episodes 50
+
+python -m src.visualize \
+  --config configs/sac_antmaze_umaze_dense_finetune.yaml \
+  --model checkpoints-sac-v5-umaze-dense-finetune/sac_v5_umaze_dense_finetune_final.zip
+```
+
+To fine-tune on Medium Dense instead:
+
+```bash
+python -m src.train \
+  --config configs/sac_antmaze_medium_dense_finetune.yaml \
+  --init-weights checkpoints-sac-v1-standard/sac_v1_standard_final.zip
+```
+
+TD3 dense fine-tuning follows the same idea. Start with UMaze Dense:
+
+```bash
+python -m src.train \
+  --config configs/td3_antmaze_umaze_dense_finetune.yaml \
+  --init-weights checkpoints-td3-v3-standard/td3_v3_standard_final.zip
+
+python -m src.evaluate \
+  --config configs/td3_antmaze_umaze_dense_finetune.yaml \
+  --model checkpoints-td3-v5-umaze-dense-finetune/td3_v5_umaze_dense_finetune_final.zip \
+  --episodes 50
+
+python -m src.visualize \
+  --config configs/td3_antmaze_umaze_dense_finetune.yaml \
+  --model checkpoints-td3-v5-umaze-dense-finetune/td3_v5_umaze_dense_finetune_final.zip
+```
+
+Then move TD3 to Medium Dense:
+
+```bash
+python -m src.train \
+  --config configs/td3_antmaze_medium_dense_finetune.yaml \
+  --init-weights checkpoints-td3-v5-umaze-dense-finetune/td3_v5_umaze_dense_finetune_final.zip
+```
+
+Continue the exact same run:
 
 ```bash
 python -m src.train \
   --config configs/sac_antmaze_umaze_dense.yaml \
-  --resume checkpoints-sac-v1/sac_v1_final_step_1000000_steps.zip
+  --resume checkpoints-sac-v1-standard/sac_v1_standard_final_step_1000000_steps.zip
 ```
+
+Use `--resume` to continue the same algorithm settings from the saved `.zip`. Use `--init-weights` to copy the neural-network weights into a new run that uses the new config, environment, learning rate, and replay buffer settings.
 
 ## Metrics
 
@@ -133,6 +191,7 @@ evaluation_distances.png
 best_rollout_trace.csv
 best_rollout_distance_over_time.png
 best_rollout_xy_trajectory.png
+rollouts/*_topdown_map_trajectory.png
 ```
 
 Compare models with:
@@ -140,12 +199,16 @@ Compare models with:
 - success rate
 - average minimum distance
 - average final distance
-- unhealthy steps and unhealthy penalty
 - distance-to-goal over time
 - xy trajectory toward the goal
+- top-down map trajectory through the maze
+
+
+
+
 
 ## Notes
 
-`penalize_unhealthy` adds a negative reward every timestep the ant is unhealthy or flipped. With `terminate_on_unhealthy: false`, the episode continues and the penalty grows the longer the ant stays upside down.
+Dense AntMaze rewards can be extremely small when the ant is far from the goal. Sparse AntMaze gives no useful reward until success, so plain SAC/TD3 may appear to receive all zeros during early exploration.
 
 HER is configured as a replay buffer for SAC in `sac_antmaze_umaze_sparse_her.yaml`; it is not a separate algorithm.

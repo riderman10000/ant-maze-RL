@@ -1,27 +1,30 @@
-# Phase 3: SAC on AntMaze Medium dense reward
+# Phase 5: TD3 fine-tuning on AntMaze UMaze dense reward
 
-phase: 3
-version: v2-standard
-algorithm: SAC
+phase: 5
+version: v5-umaze-dense-finetune
+algorithm: TD3
 policy: MultiInputPolicy
 
 # Environment
-env_id: AntMaze_MediumDense-v5
+env_id: AntMaze_UMazeDense-v5
 n_envs: 1
 vec_env_type: dummy
-# Uses the original Gymnasium Robotics reward without custom flip penalties.
+# Dense reward is useful for fine-tuning TD3 before moving back to sparse reward.
 
 # Training parameters
-total_timesteps: 3000000
+total_timesteps: 1000000
 learning_rate: 0.0003
 buffer_size: 1000000
-learning_starts: 50000
+learning_starts: 10000
 batch_size: 256
 tau: 0.005
 gamma: 0.995
 train_freq: 1
 gradient_steps: 1
-ent_coef: auto
+policy_delay: 2
+target_policy_noise: 0.2
+target_noise_clip: 0.5
+action_noise_std: 0.1
 device: auto
 verbose: 1
 progress_bar: true

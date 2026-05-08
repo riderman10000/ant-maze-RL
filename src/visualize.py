@@ -119,10 +119,6 @@ def visualize(
     seed = config.get("seed")
     if seed is not None:
         seed = int(seed)
-    penalize_unhealthy = bool(config.get("penalize_unhealthy", False))
-    unhealthy_penalty = float(config.get("unhealthy_penalty", -1.0))
-    terminate_on_unhealthy = bool(config.get("terminate_on_unhealthy", False))
-    healthy_z_range = tuple(config.get("healthy_z_range", [0.2, 1.0]))
 
     if render_mode is None:
         render_mode = config.get("render_mode", "rgb_array")
@@ -154,10 +150,6 @@ def visualize(
         env_id=env_id,
         render_mode=env_render_mode,
         seed=seed,
-        penalize_unhealthy=penalize_unhealthy,
-        unhealthy_penalty=unhealthy_penalty,
-        terminate_on_unhealthy=terminate_on_unhealthy,
-        healthy_z_range=healthy_z_range,
     )
     maze_plot_data = _get_maze_plot_data(env)
     if save_plots and maze_plot_data is None:
@@ -184,9 +176,6 @@ def visualize(
             episode_reward = 0.0
             episode_length = 0
             episode_success = None
-            episode_unhealthy_termination = False
-            episode_unhealthy_steps = 0
-            episode_unhealthy_penalty = 0.0
             min_distance = goal_distance(obs)
             distance_history = []
             step_history = []
@@ -215,11 +204,6 @@ def visualize(
                 episode_reward += float(reward)
                 episode_length += 1
                 done = terminated or truncated
-                if info.get("unhealthy", False):
-                    episode_unhealthy_steps += 1
-                    episode_unhealthy_penalty += float(info.get("unhealthy_penalty", 0.0))
-                if info.get("unhealthy_termination", False):
-                    episode_unhealthy_termination = True
 
                 distance = goal_distance(obs)
                 if distance is not None:
@@ -257,10 +241,7 @@ def visualize(
                 f"Length: {episode_length:5d} | "
                 f"Status: {status} | "
                 f"Min dist: {min_distance if min_distance is not None else float('nan'):.2f} | "
-                f"Final dist: {final_distance if final_distance is not None else float('nan'):.2f} | "
-                f"Unhealthy steps: {episode_unhealthy_steps} | "
-                f"Unhealthy penalty: {episode_unhealthy_penalty:.2f} | "
-                f"Terminated by fall: {episode_unhealthy_termination}"
+                f"Final dist: {final_distance if final_distance is not None else float('nan'):.2f}"
             )
 
             if save_plots and distance_history and xy_history:

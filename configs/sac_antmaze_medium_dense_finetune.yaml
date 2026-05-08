@@ -1,7 +1,7 @@
-# Phase 3: SAC on AntMaze Medium dense reward
+# Phase 5: SAC fine-tuning on AntMaze Medium dense reward
 
-phase: 3
-version: v2-standard
+phase: 5
+version: v5-medium-dense-finetune
 algorithm: SAC
 policy: MultiInputPolicy
 
@@ -9,13 +9,13 @@ policy: MultiInputPolicy
 env_id: AntMaze_MediumDense-v5
 n_envs: 1
 vec_env_type: dummy
-# Uses the original Gymnasium Robotics reward without custom flip penalties.
+# Dense reward is useful before moving a policy to sparse Medium/assignment runs.
 
 # Training parameters
-total_timesteps: 3000000
-learning_rate: 0.0003
+total_timesteps: 1000000
+learning_rate: 0.0001
 buffer_size: 1000000
-learning_starts: 50000
+learning_starts: 10000
 batch_size: 256
 tau: 0.005
 gamma: 0.995

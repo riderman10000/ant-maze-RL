@@ -1,4 +1,4 @@
-"""Training script for PPO on Gymnasium Robotics AntMaze."""
+"""Training script for SB3 agents on Gymnasium Robotics AntMaze."""
 
 import argparse
 from pathlib import Path
@@ -14,9 +14,13 @@ from src.utils import create_dirs, ensure_zip_path, load_config, set_seed
 def train(
     config: dict,
     resume_path: str | None = None,
+    init_weights_path: str | None = None,
     reset_num_timesteps: bool = False,
 ) -> None:
     """Train an SB3 agent from a YAML config."""
+    if resume_path is not None and init_weights_path is not None:
+        raise ValueError("Use either --resume or --init-weights, not both.")
+
     algorithm = get_algorithm_name(config)
 
     env_id = config["env_id"]
@@ -36,10 +40,6 @@ def train(
     verbose = int(config.get("verbose", 1))
     n_envs = int(config.get("n_envs", 1))
     vec_env_type = str(config.get("vec_env_type", "subproc")).lower()
-    penalize_unhealthy = bool(config.get("penalize_unhealthy", False))
-    unhealthy_penalty = float(config.get("unhealthy_penalty", -1.0))
-    terminate_on_unhealthy = bool(config.get("terminate_on_unhealthy", False))
-    healthy_z_range = tuple(config.get("healthy_z_range", [0.2, 1.0]))
 
     create_dirs(config)
 
@@ -54,18 +54,17 @@ def train(
     print(f"Total timesteps: {total_timesteps}")
     print(f"Environment copies: {n_envs}")
     print(f"Vector env type: {vec_env_type if n_envs > 1 else 'dummy'}")
-    print(f"Penalize unhealthy ant: {penalize_unhealthy}")
-    if penalize_unhealthy:
-        print(f"Unhealthy penalty per step: {unhealthy_penalty}")
-    print(f"Terminate on unhealthy ant: {terminate_on_unhealthy}")
-    if penalize_unhealthy or terminate_on_unhealthy:
-        print(f"Healthy z range: {healthy_z_range}")
+    print("Reward source: Gymnasium Robotics environment reward")
     print(f"Device: {device}")
     if resume_path is not None:
         print(f"Resume checkpoint: {resume_path}")
         print(f"Reset timestep counter: {reset_num_timesteps}")
         print(f"{algorithm} hyperparameters will be loaded from the checkpoint.")
-    else:
+    if init_weights_path is not None:
+        print(f"Initialize network weights from: {init_weights_path}")
+        print("Config hyperparameters and replay buffer settings will be used.")
+        print("Replay buffer starts empty after weight initialization.")
+    if resume_path is None:
         print(f"Learning rate: {learning_rate}")
         print(f"Batch size: {batch_size}")
         print(f"Gamma: {gamma}")
@@ -90,10 +89,6 @@ def train(
         seed=seed,
         monitor_dir=monitor_dir,
         vec_env_type=vec_env_type,
-        penalize_unhealthy=penalize_unhealthy,
-        unhealthy_penalty=unhealthy_penalty,
-        terminate_on_unhealthy=terminate_on_unhealthy,
-        healthy_z_range=healthy_z_range,
     )
     try:
         if not isinstance(env.observation_space, DictSpace):
@@ -125,6 +120,18 @@ def train(
                 seed=seed,
                 device=device,
             )
+            if init_weights_path is not None:
+                init_model_path = ensure_zip_path(init_weights_path)
+                if not init_model_path.exists():
+                    raise FileNotFoundError(
+                        f"Initial weights checkpoint not found: {init_model_path}"
+                    )
+                model.set_parameters(
+                    str(init_model_path),
+                    exact_match=False,
+                    device=device,
+                )
+                print(f"Initialized model weights from {init_model_path}.")
 
         callback = None
         if checkpoint_freq > 0:
@@ -179,6 +186,15 @@ def main():
         help='Path to an existing Stable-Baselines3 .zip checkpoint to continue training',
     )
     parser.add_argument(
+        '--init-weights',
+        type=str,
+        default=None,
+        help=(
+            'Path to a .zip checkpoint used only to initialize network weights. '
+            'Unlike --resume, the new config hyperparameters are used.'
+        ),
+    )
+    parser.add_argument(
         '--reset-timesteps',
         action='store_true',
         help='Restart TensorBoard/checkpoint timestep count when resuming',
@@ -189,7 +205,12 @@ def main():
     config = load_config(args.config)
     
     # Train
-    train(config, resume_path=args.resume, reset_num_timesteps=args.reset_timesteps)
+    train(
+        config,
+        resume_path=args.resume,
+        init_weights_path=args.init_weights,
+        reset_num_timesteps=args.reset_timesteps,
+    )
 
 
 if __name__ == '__main__':

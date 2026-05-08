@@ -1,7 +1,7 @@
 # Phase 1: PPO baseline on AntMaze UMaze dense reward
 
 phase: 1
-version: v1
+version: v1-standard
 algorithm: PPO
 policy: MultiInputPolicy
 
@@ -9,10 +9,7 @@ policy: MultiInputPolicy
 env_id: AntMaze_UMazeDense-v5
 n_envs: 4
 vec_env_type: subproc  # use dummy if subprocesses cause issues on your machine
-penalize_unhealthy: true
-unhealthy_penalty: -1.0
-terminate_on_unhealthy: false
-healthy_z_range: [0.2, 1.0]
+# Uses the original Gymnasium Robotics reward without custom flip penalties.
 
 # Training parameters
 total_timesteps: 1000000

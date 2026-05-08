@@ -1,7 +1,7 @@
 # Phase 5: SAC + HER on sparse AntMaze UMaze
 
 phase: 5
-version: v4
+version: v4-standard
 algorithm: SAC
 policy: MultiInputPolicy
 
@@ -9,13 +9,10 @@ policy: MultiInputPolicy
 env_id: AntMaze_UMaze-v5
 n_envs: 1
 vec_env_type: dummy
-penalize_unhealthy: false  # HER relabels rewards, so keep reward simple here
-unhealthy_penalty: 0.0
-terminate_on_unhealthy: false
-healthy_z_range: [0.2, 1.0]
+# Uses the original Gymnasium Robotics reward without custom flip penalties.
 
 # Training parameters
-total_timesteps: 3000000
+total_timesteps: 1000000
 learning_rate: 0.0003
 buffer_size: 1000000
 learning_starts: 10000

@@ -144,9 +144,6 @@ def save_evaluation_results(
     min_distances: list[float | None] | None,
     final_distances: list[float | None] | None,
     success_steps: list[int | None] | None,
-    unhealthy_terminations: list[bool] | None,
-    unhealthy_steps: list[int] | None,
-    unhealthy_penalties: list[float] | None,
     output_path: str | Path,
 ) -> Path:
     """Save evaluation results to CSV and return the output path."""
@@ -165,9 +162,6 @@ def save_evaluation_results(
             "min_distance": min_distances,
             "final_distance": final_distances,
             "success_step": success_steps,
-            "unhealthy_termination": unhealthy_terminations,
-            "unhealthy_steps": unhealthy_steps,
-            "unhealthy_penalty": unhealthy_penalties,
         }
     )
     df.to_csv(path, index=False)

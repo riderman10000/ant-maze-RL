@@ -1,7 +1,7 @@
 # Phase 2: SAC on AntMaze UMaze dense reward
 
 phase: 2
-version: v1
+version: v1-standard
 algorithm: SAC
 policy: MultiInputPolicy
 
@@ -9,16 +9,13 @@ policy: MultiInputPolicy
 env_id: AntMaze_UMazeDense-v5
 n_envs: 1
 vec_env_type: dummy
-penalize_unhealthy: true
-unhealthy_penalty: -1.0
-terminate_on_unhealthy: false
-healthy_z_range: [0.2, 1.0]
+# Uses the original Gymnasium Robotics reward without custom flip penalties.
 
 # Training parameters
-total_timesteps: 1000000
+total_timesteps: 3000000
 learning_rate: 0.0003
 buffer_size: 1000000
-learning_starts: 10000
+learning_starts: 50000
 batch_size: 256
 tau: 0.005
 gamma: 0.995
