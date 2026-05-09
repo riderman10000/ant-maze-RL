@@ -198,7 +198,7 @@ def visualize(
                 if random_policy:
                     action = env.action_space.sample()
                 else:
-                    action, _ = model.predict(obs, deterministic=True)
+                    action, _ = model.predict(obs, deterministic=False)
 
                 obs, reward, terminated, truncated, info = env.step(action)
                 episode_reward += float(reward)

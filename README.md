@@ -37,7 +37,7 @@ logs/monitor-ppo-v1-standard
 ppo_v1_standard_final.zip
 ```
 
-The default configs use the original Gymnasium Robotics reward only. There is no custom flip penalty or custom termination wrapper in the standard baselines.
+Standard configs use the original Gymnasium Robotics reward only. Configs marked as shaped add explicit reward shaping terms and should be reported separately from standard baselines.
 
 ## Installation
 
@@ -58,7 +58,7 @@ python -c "import gymnasium, gymnasium_robotics, stable_baselines3, mujoco; prin
 
 | Phase | Config | Result folder | Final model |
 |---|---|---|---|
-| 1 PPO UMaze Dense | `configs/ppo_antmaze_umaze_dense.yaml` | `results-ppo-v1-standard` | `checkpoints-ppo-v1-standard/ppo_v1_standard_final.zip` |
+| 1 PPO UMaze Dense Shaped | `configs/ppo_antmaze_umaze_dense.yaml` | `results-ppo-v1-shaped` | `checkpoints-ppo-v1-shaped/ppo_v1_shaped_final.zip` |
 | 2 SAC UMaze Dense | `configs/sac_antmaze_umaze_dense.yaml` | `results-sac-v1-standard` | `checkpoints-sac-v1-standard/sac_v1_standard_final.zip` |
 | 3 PPO Medium Dense | `configs/ppo_antmaze_medium_dense.yaml` | `results-ppo-v2-standard` | `checkpoints-ppo-v2-standard/ppo_v2_standard_final.zip` |
 | 3 SAC Medium Dense | `configs/sac_antmaze_medium_dense.yaml` | `results-sac-v2-standard` | `checkpoints-sac-v2-standard/sac_v2_standard_final.zip` |
@@ -76,8 +76,8 @@ Phase 1:
 
 ```bash
 python -m src.train --config configs/ppo_antmaze_umaze_dense.yaml
-python -m src.evaluate --config configs/ppo_antmaze_umaze_dense.yaml --model checkpoints-ppo-v1-standard/ppo_v1_standard_final.zip --episodes 50
-python -m src.visualize --config configs/ppo_antmaze_umaze_dense.yaml --model checkpoints-ppo-v1-standard/ppo_v1_standard_final.zip
+python -m src.evaluate --config configs/ppo_antmaze_umaze_dense.yaml --model checkpoints-ppo-v1-shaped/ppo_v1_shaped_final.zip --episodes 50
+python -m src.visualize --config configs/ppo_antmaze_umaze_dense.yaml --model checkpoints-ppo-v1-shaped/ppo_v1_shaped_final.zip
 ```
 
 Phase 2:
@@ -180,6 +180,36 @@ python -m src.train \
 
 Use `--resume` to continue the same algorithm settings from the saved `.zip`. Use `--init-weights` to copy the neural-network weights into a new run that uses the new config, environment, learning rate, and replay buffer settings.
 
+## TensorBoard
+
+View all training runs:
+
+```bash
+tensorboard --logdir logs
+```
+
+View only TensorBoard event logs:
+
+```bash
+tensorboard --logdir logs/tensorboard-sac-v1-standard
+```
+
+Common run-specific examples:
+
+```bash
+tensorboard --logdir logs/tensorboard-ppo-v2-standard
+tensorboard --logdir logs/tensorboard-sac-v2-standard
+tensorboard --logdir logs/tensorboard-sac-v4-standard
+tensorboard --logdir logs/tensorboard-sac-v5-umaze-dense-finetune
+tensorboard --logdir logs/tensorboard-td3-v5-umaze-dense-finetune
+```
+
+Then open the local URL TensorBoard prints, usually:
+
+```text
+http://localhost:6006/
+```
+
 ## Metrics
 
 Evaluation writes:
@@ -203,6 +233,26 @@ Compare models with:
 - xy trajectory toward the goal
 - top-down map trajectory through the maze
 
+Generate report-ready comparison assets:
+
+```bash
+python -m src.report_assets \
+  --run "PPO Medium Dense=results-ppo-v2-standard" \
+  --run "SAC Medium Dense=results-sac-v2-standard" \
+  --output-dir results-report-assets
+```
+
+This writes:
+
+```text
+comparison_table.csv
+comparison_table.md
+comparison_table.png
+training_curves.png
+```
+
+Use the comparison table for average return, success rate, final/minimum distance, training steps, and an estimated convergence step. Use `training_curves.png` as the report training-curve figure.
+
 
 
 
@@ -210,5 +260,7 @@ Compare models with:
 ## Notes
 
 Dense AntMaze rewards can be extremely small when the ant is far from the goal. Sparse AntMaze gives no useful reward until success, so plain SAC/TD3 may appear to receive all zeros during early exploration.
+
+The shaped PPO UMaze config adds a small flip/tilt penalty, a small vertical-motion penalty, and a goal-progress reward. Treat it as reward shaping, not as the standard AntMaze baseline.
 
 HER is configured as a replay buffer for SAC in `sac_antmaze_umaze_sparse_her.yaml`; it is not a separate algorithm.

@@ -40,6 +40,12 @@ def train(
     verbose = int(config.get("verbose", 1))
     n_envs = int(config.get("n_envs", 1))
     vec_env_type = str(config.get("vec_env_type", "subproc")).lower()
+    reward_shaping = bool(config.get("reward_shaping", False))
+    flip_penalty = float(config.get("flip_penalty", -0.1))
+    progress_reward_scale = float(config.get("progress_reward_scale", 1.0))
+    vertical_motion_penalty_scale = float(config.get("vertical_motion_penalty_scale", 0.05))
+    healthy_z_range = tuple(config.get("healthy_z_range", [0.2, 1.0]))
+    min_upright_z = float(config.get("min_upright_z", 0.3))
 
     create_dirs(config)
 
@@ -55,6 +61,13 @@ def train(
     print(f"Environment copies: {n_envs}")
     print(f"Vector env type: {vec_env_type if n_envs > 1 else 'dummy'}")
     print("Reward source: Gymnasium Robotics environment reward")
+    if reward_shaping:
+        print("Reward shaping: enabled")
+        print(f"  Flip/tilt penalty: {flip_penalty}")
+        print(f"  Goal-progress reward scale: {progress_reward_scale}")
+        print(f"  Vertical motion penalty scale: {vertical_motion_penalty_scale}")
+        print(f"  Healthy z range: {healthy_z_range}")
+        print(f"  Minimum uprightness: {min_upright_z}")
     print(f"Device: {device}")
     if resume_path is not None:
         print(f"Resume checkpoint: {resume_path}")
@@ -89,6 +102,12 @@ def train(
         seed=seed,
         monitor_dir=monitor_dir,
         vec_env_type=vec_env_type,
+        reward_shaping=reward_shaping,
+        flip_penalty=flip_penalty,
+        progress_reward_scale=progress_reward_scale,
+        vertical_motion_penalty_scale=vertical_motion_penalty_scale,
+        healthy_z_range=healthy_z_range,
+        min_upright_z=min_upright_z,
     )
     try:
         if not isinstance(env.observation_space, DictSpace):
@@ -140,7 +159,7 @@ def train(
                 save_freq=save_freq,
                 save_path=str(checkpoint_dir),
                 name_prefix=f"{final_model_name}_step",
-                save_replay_buffer=False,
+                save_replay_buffer=True,
                 save_vecnormalize=False,
             )
 

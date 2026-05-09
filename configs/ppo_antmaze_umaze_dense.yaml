@@ -1,7 +1,7 @@
-# Phase 1: PPO baseline on AntMaze UMaze dense reward
+# Phase 1: PPO on AntMaze UMaze dense reward with gentle reward shaping
 
 phase: 1
-version: v1-standard
+version: v1-shaped
 algorithm: PPO
 policy: MultiInputPolicy
 
@@ -9,7 +9,17 @@ policy: MultiInputPolicy
 env_id: AntMaze_UMazeDense-v5
 n_envs: 4
 vec_env_type: subproc  # use dummy if subprocesses cause issues on your machine
-# Uses the original Gymnasium Robotics reward without custom flip penalties.
+
+# Reward shaping
+# The base Gymnasium Robotics dense reward is still used. These small terms
+# discourage flipped postures, discourage vertical hopping, and reward
+# reducing distance to the goal.
+reward_shaping: true
+flip_penalty: -0.1
+progress_reward_scale: 1.0
+vertical_motion_penalty_scale: 0.05
+healthy_z_range: [0.2, 1.0]
+min_upright_z: 0.3
 
 # Training parameters
 total_timesteps: 1000000

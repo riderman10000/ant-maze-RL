@@ -93,7 +93,7 @@ def evaluate(
                 xy_history.append(initial_xy)
 
             while not done:
-                action, _ = model.predict(obs, deterministic=True)
+                action, _ = model.predict(obs, deterministic=False)
                 obs, reward, terminated, truncated, info = env.step(action)
                 episode_reward += float(reward)
                 episode_length += 1
