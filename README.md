@@ -69,6 +69,8 @@ python -c "import gymnasium, gymnasium_robotics, stable_baselines3, mujoco; prin
 | 5 SAC Medium Dense Fine-tune | `configs/sac_antmaze_medium_dense_finetune.yaml` | `results-sac-v5-medium-dense-finetune` | `checkpoints-sac-v5-medium-dense-finetune/sac_v5_medium_dense_finetune_final.zip` |
 | 5 TD3 UMaze Dense Fine-tune | `configs/td3_antmaze_umaze_dense_finetune.yaml` | `results-td3-v5-umaze-dense-finetune` | `checkpoints-td3-v5-umaze-dense-finetune/td3_v5_umaze_dense_finetune_final.zip` |
 | 5 TD3 Medium Dense Fine-tune | `configs/td3_antmaze_medium_dense_finetune.yaml` | `results-td3-v5-medium-dense-finetune` | `checkpoints-td3-v5-medium-dense-finetune/td3_v5_medium_dense_finetune_final.zip` |
+| 5 SAC+HER Medium Sparse | `configs/sac_antmaze_medium_sparse_her.yaml` | `results-sac-v6-medium-sparse-her` | `checkpoints-sac-v6-medium-sparse-her/sac_v6_medium_sparse_her_final.zip` |
+| 5 TD3 Medium Sparse | `configs/td3_antmaze_medium_sparse.yaml` | `results-td3-v6-medium-sparse` | `checkpoints-td3-v6-medium-sparse/td3_v6_medium_sparse_final.zip` |
 
 ## Commands
 
@@ -118,6 +120,26 @@ Phase 5:
 python -m src.train --config configs/sac_antmaze_umaze_sparse_her.yaml
 python -m src.evaluate --config configs/sac_antmaze_umaze_sparse_her.yaml --model checkpoints-sac-v4-standard/sac_v4_standard_final.zip --episodes 50
 python -m src.visualize --config configs/sac_antmaze_umaze_sparse_her.yaml --model checkpoints-sac-v4-standard/sac_v4_standard_final.zip
+```
+
+Assignment-target Medium sparse runs:
+
+```bash
+python -m src.train --config configs/sac_antmaze_medium_sparse_her.yaml
+python -m src.evaluate --config configs/sac_antmaze_medium_sparse_her.yaml --model checkpoints-sac-v6-medium-sparse-her/sac_v6_medium_sparse_her_final.zip --episodes 50
+python -m src.visualize --config configs/sac_antmaze_medium_sparse_her.yaml --model checkpoints-sac-v6-medium-sparse-her/sac_v6_medium_sparse_her_final.zip
+
+python -m src.train --config configs/td3_antmaze_medium_sparse.yaml
+python -m src.evaluate --config configs/td3_antmaze_medium_sparse.yaml --model checkpoints-td3-v6-medium-sparse/td3_v6_medium_sparse_final.zip --episodes 50
+python -m src.visualize --config configs/td3_antmaze_medium_sparse.yaml --model checkpoints-td3-v6-medium-sparse/td3_v6_medium_sparse_final.zip
+```
+
+Recommended warm-start for SAC+HER Medium sparse after a dense Medium run:
+
+```bash
+python -m src.train \
+  --config configs/sac_antmaze_medium_sparse_her.yaml \
+  --init-weights checkpoints-sac-v5-medium-dense-finetune/sac_v5_medium_dense_finetune_final.zip
 ```
 
 Phase 5 dense fine-tuning from an existing SAC checkpoint:

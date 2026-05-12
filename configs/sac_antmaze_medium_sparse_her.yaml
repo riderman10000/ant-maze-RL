@@ -1,15 +1,15 @@
-# Phase 3: SAC on AntMaze Medium dense reward
+# Phase 5: SAC + HER on sparse AntMaze Medium
 
-phase: 3
-version: v2-standard
+phase: 5
+version: v6-medium-sparse-her
 algorithm: SAC
 policy: MultiInputPolicy
 
 # Environment
-env_id: AntMaze_MediumDense-v5
+env_id: AntMaze_Medium-v5
 n_envs: 1
 vec_env_type: dummy
-# Uses the original Gymnasium Robotics reward without custom flip penalties.
+# Uses the original Gymnasium Robotics sparse reward with HER relabeling.
 
 # Training parameters
 total_timesteps: 3000000
@@ -25,7 +25,11 @@ ent_coef: auto
 device: auto
 verbose: 1
 progress_bar: true
+
+# HER replay buffer
 use_her: true
+her_n_sampled_goal: 4
+her_goal_selection_strategy: future
 
 # Reproducibility
 seed: 42
